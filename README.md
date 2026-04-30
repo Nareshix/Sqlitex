@@ -1,4 +1,5 @@
 # LazySql
+ 
 
 - LazySql is a sqlite library for rust
 - Has compile time guarantees
