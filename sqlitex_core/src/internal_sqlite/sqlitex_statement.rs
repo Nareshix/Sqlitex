@@ -1,15 +1,15 @@
 use libsqlite3_sys::{sqlite3_finalize, sqlite3_stmt};
 
 #[allow(unused)]
-pub struct sqlitexStmt {
+pub struct SqlitexStmt {
     pub sql_query: &'static str,
     pub stmt: *mut sqlite3_stmt,
 }
 
-unsafe impl Send for sqlitexStmt {}
-unsafe impl Sync for sqlitexStmt {}
+unsafe impl Send for SqlitexStmt {}
+unsafe impl Sync for SqlitexStmt {}
 
-impl Drop for sqlitexStmt {
+impl Drop for SqlitexStmt {
     fn drop(&mut self) {
         // If the statement was initialized, we must finalize it to prevent memory leaks.
         if !self.stmt.is_null() {

@@ -196,9 +196,9 @@ fn expand(
             if sql_query.trim().to_uppercase().starts_with("CREATE TABLE") {
                 create_tables(&sql_query, &mut all_tables);
 
-                field.ty = parse_quote!(sqlitex::internal_sqlite::sqlitex_statement::sqlitexStmt);
+                field.ty = parse_quote!(sqlitex::internal_sqlite::sqlitex_statement::SqlitexStmt);
                 sql_assignments.push(quote! {
-                    #ident: sqlitex::internal_sqlite::sqlitex_statement::sqlitexStmt {
+                    #ident: sqlitex::internal_sqlite::sqlitex_statement::SqlitexStmt {
                         sql_query: #transpiled_sql_lit,
                         stmt: std::ptr::null_mut(),
                     }
@@ -286,10 +286,10 @@ fn expand(
             let formated_sql_query = format_sql(&sql_query);
             let doc_comment = format!(" \n**SQL**\n```sql\n{}", formated_sql_query);
 
-            field.ty = parse_quote!(sqlitex::internal_sqlite::sqlitex_statement::sqlitexStmt);
+            field.ty = parse_quote!(sqlitex::internal_sqlite::sqlitex_statement::SqlitexStmt);
 
             sql_assignments.push(quote! {
-                #ident: sqlitex::internal_sqlite::sqlitex_statement::sqlitexStmt {
+                #ident: sqlitex::internal_sqlite::sqlitex_statement::SqlitexStmt {
                     sql_query: #transpiled_sql_lit,
                     stmt: std::ptr::null_mut(),
                 }
@@ -550,10 +550,10 @@ fn expand(
 
             let transpiled_sql_lit = syn::LitStr::new(&sql_query, sql_lit.span());
 
-            field.ty = parse_quote!(sqlitex::internal_sqlite::sqlitex_statement::sqlitexStmt);
+            field.ty = parse_quote!(sqlitex::internal_sqlite::sqlitex_statement::SqlitexStmt);
 
             sql_assignments.push(quote! {
-                #ident: sqlitex::internal_sqlite::sqlitex_statement::sqlitexStmt {
+                #ident: sqlitex::internal_sqlite::sqlitex_statement::SqlitexStmt {
                     sql_query: #transpiled_sql_lit,
                     stmt: std::ptr::null_mut(),
                 }
