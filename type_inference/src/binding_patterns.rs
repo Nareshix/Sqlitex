@@ -408,8 +408,8 @@ fn traverse_expr(
                 && hint.base_type == BaseType::Bool
             {
                 match &val.value {
-                    sqlparser::ast::Value::Number(n, _) => {
-                        if n != "0" && n != "1" {
+                    sqlparser::ast::Value::Number(n, _)
+                        if n != "0" && n != "1" => {
                             return Err(err_from_expr(
                                 expr,
                                 format!(
@@ -418,7 +418,6 @@ fn traverse_expr(
                                 ),
                             ));
                         }
-                    }
 
                     sqlparser::ast::Value::SingleQuotedString(s)
                     | sqlparser::ast::Value::DoubleQuotedString(s) => {

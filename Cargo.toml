@@ -1,9 +1,9 @@
 [workspace]
 resolver = "3"
 members = [
-    "lazysql",
-    "lazysql-core",
-    "lazysql_macros",
+    "sqlitex",
+    "sqlitex_core",
+    "sqlitex_macros",
     "type_inference",
     "tests"
 ]
@@ -15,7 +15,7 @@ license = "MIT"
 
 
 [workspace.dependencies]
-lazysql ={ path = "./lazysql", version = "0.4.0"}
-lazysql-core = { path = "./lazysql-core", version = "0.4.0" }
-lazysql_macros = { path = "./lazysql_macros", version = "0.4.0" }
+sqlitex ={ path = "./sqlitex", version = "0.4.0"}
+sqlitex_core = { path = "./sqlitex_core", version = "0.4.0" }
+sqlitex_macros = { path = "./sqlitex_macros", version = "0.4.0" }
 type_inference = { path = "./type_inference", version = "0.4.0" }

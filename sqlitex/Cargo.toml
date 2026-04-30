@@ -1,16 +1,16 @@
 [package]
-name = "lazysql"
+name = "sqlitex"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "An ergonomic sqlite library with compile time guarantees"
 readme = "../README.md"
-homepage = "https://github.com/Nareshix/LazySql"
-repository = "https://github.com/Nareshix/LazySql"
+homepage = "https://github.com/Nareshix/sqlitex"
+repository = "https://github.com/Nareshix/sqlitex"
 keywords = ["database", "sqlite", "sql", "ergonomic"]
 categories = ["database", "database-implementations", "embedded"]
-documentation = "https://docs.rs/lazysql/latest/lazysql"
+documentation = "https://docs.rs/sqlitex/latest/sqlitex"
 
 [dependencies]
-lazysql-core.workspace = true
-lazysql_macros.workspace = true
+sqlitex_core.workspace = true
+sqlitex_macros.workspace = true

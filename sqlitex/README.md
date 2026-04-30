@@ -1,6 +1,6 @@
-# LazySql
+# sqlitex
 
-- LazySql is a sqlite library for rust
+- sqlitex is a sqlite library for rust
 - Has compile time guarantees
 - Ergonomic
 - Fast. Automatically caches and reuses prepared statements for you
@@ -18,7 +18,6 @@
   2. [SQL File](#2-sql-file)
   3. [Live Database](#3-live-database)
 - [Features](#features)
-
   1. [`sql!` Macro](#sql-macro)
   2. [`sql_runtime!` Macro](#sql_runtime-macro)
      - [SELECT](#1-select)
@@ -28,7 +27,7 @@
   5. [Transactions](#transactions)
 
 - [Dynamic runtime features](#dynamic-runtime-features)
-  1. [How is this different from  `sql_runtime!`](#how-is-this-different-from--sql_runtime)
+  1. [How is this different from `sql_runtime!`](#how-is-this-different-from--sql_runtime)
   2. [Runtime Features](#runtime-features)
   3. [Transactions at Runtime](#transactions-at-runtime)
 - [Type Mapping](#type-mapping)
@@ -43,27 +42,27 @@
 Run the following Cargo command in your project directory:
 
 ```bash
-cargo add lazysql
+cargo add sqlitex
 ```
 
 OR
 
-Go to [LazySql's crates.io](https://crates.io/crates/lazysql) to get the latest version. Add that to following line to your Cargo.toml:
+Go to [sqlitex's crates.io](https://crates.io/crates/sqlitex) to get the latest version. Add that to following line to your Cargo.toml:
 
 ```toml
-lazysql = "*" # Replace the "*" with the latest version
+sqlitex = "*" # Replace the "*" with the latest version
 ```
 
 ## Quick Start
 
 ```rust
-use lazysql::{LazyConnection, lazy_sql};
+use sqlitex::{Connection, sqlitex};
 
-#[lazy_sql]
+#[sqlitex]
 struct AppDatabase {
     // all create tables must be at the top before read/write logic in order to get compile time checks
 
-    // you don't have to import sql! macro. lazy_sql brings with it
+    // you don't have to import sql! macro. sqlitex brings with it
     init: sql!("
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY NOT NULL,
@@ -79,8 +78,8 @@ struct AppDatabase {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // or LazyConnection::open("path/to/sql.db")  note that it lazily creates one if doesnt exist
-    let conn = LazyConnection::open_memory()?;
+    // or Connection::open("path/to/sql.db")  note that it lazily creates one if doesnt exist
+    let conn = Connection::open_memory()?;
 
     // The 'new' constructor is generated automatically
     let mut db = AppDatabase::new(conn);
@@ -110,9 +109,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
-- `LazySql` has some nice QOL features like hover over to see sql code and good ide support
+- `sqlitex` has some nice QOL features like hover over to see sql code and good ide support
 
-  ![usage](https://github.com/Nareshix/LazySql/raw/main/amedia_for_readme/usage.gif)
+  ![usage](https://github.com/Nareshix/sqlitex/raw/main/amedia_for_readme/usage.gif)
 
 - The type inference system and compile time check also works well for `JOIN`, `CASE` `ctes`, `window function`, `datetime functions` `recursive ctes`, `RETURNING` and more complex scenarios. You can even run `PRAGMA` statements with it.
 
@@ -120,43 +119,43 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - You cannot name a field called `transaction` in the struct since its a reserved method name for transactions. Failiure to do so will result in a compile time error.
 
-- There will be rare scenarios when a type is impossible to infer. `LazySql` will tell you specifically which binding parameter or expression cannot be inferred and will suggest using type casting via PostgreSQL's `::` operator or standard SQL's `CAST AS`. Note that you can't type cast as `boolean` for now.
+- There will be rare scenarios when a type is impossible to infer. `sqlitex` will tell you specifically which binding parameter or expression cannot be inferred and will suggest using type casting via PostgreSQL's `::` operator or standard SQL's `CAST AS`. Note that you can't type cast as `boolean` for now.
 
   For instance,
 
-  ![error_1](https://github.com/Nareshix/LazySql/blob/main/amedia_for_readme/error_1.png?raw=true)
+  ![error_1](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_1.png?raw=true)
 
-  ![error_2](https://github.com/Nareshix/LazySql/blob/main/amedia_for_readme/error_2.png?raw=true)
+  ![error_2](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_2.png?raw=true)
 
 ## Connection methods
 
-`lazysql` supports 3 ways to define your schema, depending on your workflow.
+`sqlitex` supports 3 ways to define your schema, depending on your workflow.
 
 ### 1. Inline Schema
 
 As seen in the Quick Start. Define tables inside the struct.
 
 ```rust
-#[lazy_sql]
+#[sqlitex]
 struct App { ... }
 ```
 
 ### 2. SQL File
 
-Point to a `.sql` file. The compile time checks will be done against this sql file (ensure that there is `CREATE TABLE`). `lazysql` watches this file; if you edit it, rust recompiles automatically to ensure type safety.
+Point to a `.sql` file. The compile time checks will be done against this sql file (ensure that there is `CREATE TABLE`). `sqlitex` watches this file; if you edit it, rust recompiles automatically to ensure type safety.
 
 ```rust
-#[lazy_sql("schema.sql")]
+#[sqlitex("schema.sql")]
 // you dont have to create tables. Any read/write sql queries gets compile time guarantees.
 struct App { ... }
 ```
 
 ### 3. Live Database
 
-Point to an existing `.db` binary file. `lazysql` inspects the live metadata to validate your queries.
+Point to an existing `.db` binary file. `sqlitex` inspects the live metadata to validate your queries.
 
 ```rust
-#[lazy_sql("production_snapshot.db")]
+#[sqlitex("production_snapshot.db")]
 struct App { ... }
 ```
 
@@ -164,22 +163,20 @@ Note: for method 2 and 3, you can technically CREATE TABLE as well but to ensure
 
 ## Features
 
-the `lazy_sql!` macro brings `sql!` and `sql_runtime!` macro. so there is no need to import them. and they can only be used within structs defined with `lazy_sql!`
+the `sqlitex!` macro brings `sql!` and `sql_runtime!` macro. so there is no need to import them. and they can only be used within structs defined with `sqlitex!`
 
 Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a time. Chaining multiple queries with semicolons (;) is not supported and will result in compile time error.
 
 1. ### `sql!` Macro
 
    Always prefer to use this. It automatically:
-
    1. **Infers Inputs:** Maps `?` to Rust types (`i64`, `f64`, `String`, `bool`).
    2. **Generates Outputs:** For `SELECT` queries, creates a struct named after the field
 
 2. ### `sql_runtime!` Macro
-
    - Use this only when you need the sql to to be executed at runtime with some compile time guarantees. **Rarely needed in practice**. You would know when you need it.
 
-   - Originally, `sql_runtime!` is intended more of an escape hatch when you cant use the `sql!` macro due to  false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
+   - Originally, `sql_runtime!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
 
    #### a. `SELECT`
 
@@ -188,7 +185,7 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
    `SqlMapping` maps columns by **index**, not by name. The order of fields in your struct **must** match the order of columns in your `SELECT` statement exactly.
 
    ```rust
-   use lazysql::{SqlMapping, LazyConnection, lazy_sql};
+   use sqlitex::{SqlMapping, Connection, sqlitex};
 
    #[derive(Debug, SqlMapping)]
    pub struct UserStats { // must be pub
@@ -196,7 +193,7 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
        status: String,  // Maps to column index 1
    }
 
-   #[lazy_sql]
+   #[sqlitex]
    struct Analytics {
        get_stats: sql_runtime!(
            UserStats, // pass in the struct so you can access the fields later
@@ -210,7 +207,7 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
    }
 
    fn foo{
-       let conn = LazyConnection::open_memory()?;
+       let conn = Connection::open_memory()?;
        let mut db = Analytics::new(conn);
 
        let foo = db.get_stats(100, 5)?;
@@ -225,7 +222,7 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
    For `INSERT`, `UPDATE`, or `DELETE` statements
 
    ```rust
-   #[lazy_sql]
+   #[sqlitex]
    struct Logger {
        log: sql_runtime!("INSERT INTO logs (msg, level) VALUES (?, ?)", String, i64)
    }
@@ -244,7 +241,6 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
    ```
 
 4. ### `all()` and `first()` methods for iterators
-
    - `all()` collects the iterator into a vector. Just a lightweight wrapper around .collect() to prevent adding type hints (Vec<\_>) in code
 
      ```rust
@@ -260,58 +256,59 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
      ```
 
 5. ### Transactions
+
 - Note: you cannot name a field called `transaction` in the struct since its a reserved method name. Failiure to do so will result in a compile time error.
 
-   ```rust
-       use lazysql::{LazyConnection, lazy_sql};
+  ```rust
+      use sqlitex::{Connection, sqlitex};
 
-       #[lazy_sql]
-       struct DB {
-           // We add UNIQUE to trigger a real database error later
-           init: sql!(
-               "CREATE TABLE IF NOT EXISTS users
-                       (id INTEGER PRIMARY KEY NOT NULL,
-                       name TEXT UNIQUE NOT NULL)"
-           ),
+      #[sqlitex]
+      struct DB {
+          // We add UNIQUE to trigger a real database error later
+          init: sql!(
+              "CREATE TABLE IF NOT EXISTS users
+                      (id INTEGER PRIMARY KEY NOT NULL,
+                      name TEXT UNIQUE NOT NULL)"
+          ),
 
-           add: sql!("INSERT INTO users (name) VALUES (?)"),
+          add: sql!("INSERT INTO users (name) VALUES (?)"),
 
-           count: sql!("SELECT count(*) as count FROM users"),
-       }
+          count: sql!("SELECT count(*) as count FROM users"),
+      }
 
-       fn main() -> Result<(), Box<dyn std::error::Error>> {
-           let conn = LazyConnection::open_memory()?;
-           let mut db = DB::new(conn);
-           db.init()?;
+      fn main() -> Result<(), Box<dyn std::error::Error>> {
+          let conn = Connection::open_memory()?;
+          let mut db = DB::new(conn);
+          db.init()?;
 
-           // Successful Transaction (Batch Commit)
-           let results = db.transaction(|tx| {
-               tx.add("Alice")?;
-               tx.add("Bob")?;
+          // Successful Transaction (Batch Commit)
+          let results = db.transaction(|tx| {
+              tx.add("Alice")?;
+              tx.add("Bob")?;
 
-               let count = tx.count()?.all()?;
+              let count = tx.count()?.all()?;
 
-               Ok(count) // if you are not returning anything, u should return it as `Ok(())`
-           })?;
+              Ok(count) // if you are not returning anything, u should return it as `Ok(())`
+          })?;
 
-           println!("{:?}", results[0].count); // prints out '2'
+          println!("{:?}", results[0].count); // prints out '2'
 
-           // Failed Transaction (Automatic Rollback)
-           // We try to add Charlie, then add Alice again.
-           // Since 'Alice' exists, the second command fails, causing the WHOLE block to revert.
-           // If you are running this on ur computer, it is expected to see this in the terminal:
-           // "Error: WriteBinding(Step(SqliteFailure { code: 19, error_msg: "UNIQUE constraint failed: users.name" }))"
-           db.transaction(|tx| {
-               tx.add("Charlie")?; // 1. Writes successfully (pending)
-               tx.add("Alice")?; // 2. Fails (Duplicate) -> Triggers Rollback
-               Ok(())
-           })?;
+          // Failed Transaction (Automatic Rollback)
+          // We try to add Charlie, then add Alice again.
+          // Since 'Alice' exists, the second command fails, causing the WHOLE block to revert.
+          // If you are running this on ur computer, it is expected to see this in the terminal:
+          // "Error: WriteBinding(Step(SqliteFailure { code: 19, error_msg: "UNIQUE constraint failed: users.name" }))"
+          db.transaction(|tx| {
+              tx.add("Charlie")?; // 1. Writes successfully (pending)
+              tx.add("Alice")?; // 2. Fails (Duplicate) -> Triggers Rollback
+              Ok(())
+          })?;
 
 
 
-           Ok(())
-       }
-   ```
+          Ok(())
+      }
+  ```
 
 ## Type Mapping
 
@@ -324,69 +321,71 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
 | Nullable       | `Option<T>`       | When a column or expr has a possibility of returning `NULL`, this will be returned. its recommended to use `NOT NULL` when creating tables so that ergonomic-wise you don't always have to use Some(T) when adding parameters               |
 
 ## Dynamic runtime features
+
 - **Strongly** recommended to use the `sql!` macro for most use-cases. Dynamic runtime features are only needed in **rare** scenarios.
 
-### How is this different from  `sql_runtime!`
+### How is this different from `sql_runtime!`
 
-- `sql_runtime!` is intended more of an escape hatch when you cant use the `sql!` macro due to  false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
+- `sql_runtime!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
 
 ### Runtime Features
+
 - Dynamic runtime features happens fully at runtime. All the features are stated below in this code block.
 
-    ```rust
+  ```rust
 
-    use lazysql::LazyConnection;
+  use sqlitex::Connection;
 
-    fn main() -> Result<(), Box<dyn std::error::Error>> {
-        let conn = LazyConnection::open_memory()?;
+  fn main() -> Result<(), Box<dyn std::error::Error>> {
+      let conn = Connection::open_memory()?;
 
-        // Use execute_dynamic for write statements (CREATE, INSERT, UPDATE, DELETE, etc.)
-        conn.execute_dynamic(
-            "CREATE TABLE products (
-                id INTEGER PRIMARY KEY,
-                name TEXT NOT NULL,
-                price REAL,
-                in_stock INTEGER
-            )",
-        )?;
+      // Use execute_dynamic for write statements (CREATE, INSERT, UPDATE, DELETE, etc.)
+      conn.execute_dynamic(
+          "CREATE TABLE products (
+              id INTEGER PRIMARY KEY,
+              name TEXT NOT NULL,
+              price REAL,
+              in_stock INTEGER
+          )",
+      )?;
 
-        // _rows_affected variable is the number of rows modified, which in this case is an insert of 3 rows
-        let _rows_affected = conn.execute_dynamic(
-            "INSERT INTO products (name, price, in_stock) VALUES
-            ('Laptop', 999.99, 1),
-            ('Mouse', 25.50, 1),
-            ('Keyboard', 75.00, 0)",
-        )?;
+      // _rows_affected variable is the number of rows modified, which in this case is an insert of 3 rows
+      let _rows_affected = conn.execute_dynamic(
+          "INSERT INTO products (name, price, in_stock) VALUES
+          ('Laptop', 999.99, 1),
+          ('Mouse', 25.50, 1),
+          ('Keyboard', 75.00, 0)",
+      )?;
 
-        // Use query_dynamic for running SELECT statements
-        let results = conn.query_dynamic("SELECT * FROM products")?;
-        println!("Headers: {:?}", results.column_names); // id, name, price, in_stock
+      // Use query_dynamic for running SELECT statements
+      let results = conn.query_dynamic("SELECT * FROM products")?;
+      println!("Headers: {:?}", results.column_names); // id, name, price, in_stock
 
-        // row_result is an iterator
-        for row_result in results {
-            let row = row_result?;
-            for value in row {
-                print!("{:?} ", value); // or u could do value.as_string(), value.as_f64(), value.as_i64(), etc. to convert the enum to specific type
-            }
-        }
+      // row_result is an iterator
+      for row_result in results {
+          let row = row_result?;
+          for value in row {
+              print!("{:?} ", value); // or u could do value.as_string(), value.as_f64(), value.as_i64(), etc. to convert the enum to specific type
+          }
+      }
 
-        // u can use helper functions like first() or all() to get a vector of rows.
-        let _first_row = conn
-            .query_dynamic("SELECT name, price FROM products WHERE id = 1")?
-            .first()?; // or .all()? for all rows
+      // u can use helper functions like first() or all() to get a vector of rows.
+      let _first_row = conn
+          .query_dynamic("SELECT name, price FROM products WHERE id = 1")?
+          .first()?; // or .all()? for all rows
 
-        Ok(())
-    }
+      Ok(())
+  }
 
-    ```
+  ```
 
 ### Transactions at Runtime
 
 ```rust
-use lazysql::LazyConnection;
+use sqlitex::Connection;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = LazyConnection::open_memory()?;
+    let conn = Connection::open_memory()?;
 
     conn.execute_dynamic("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT UNIQUE)")?;
 
@@ -434,13 +433,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Strict INSERT Validation
 
-- Although standard SQL allows inserting any number of columns to a table, lazysql checks INSERT statements at compile time. If you omit any column (except for `AUTOINCREMENT` and `DEFAULT`), code will fail to compile. This means you must either specify all columns explicitly, or use implicit insertion for all columns. This is done to prevent certain runtime errors such as `NOT NULL constraint failed` and more.
+- Although standard SQL allows inserting any number of columns to a table, sqlitex checks INSERT statements at compile time. If you omit any column (except for `AUTOINCREMENT` and `DEFAULT`), code will fail to compile. This means you must either specify all columns explicitly, or use implicit insertion for all columns. This is done to prevent certain runtime errors such as `NOT NULL constraint failed` and more.
 
 ### False positives during compile time checks
 
 - I tried my best to support as many sql and sqlite-specific queries as possible.
 
--  This isnt naturally easy in sqlite as they dont provide any api to give us type inference and schema awareness validation.
+- This isnt naturally easy in sqlite as they dont provide any api to give us type inference and schema awareness validation.
 
 - In the extremely rare case of a False positives (valid SQL syntax **fails** or type inference **incorrectly fails**), you can fall back to the `sql_runtime!` macro. Would appreciate it if you could open an issue as well.
 

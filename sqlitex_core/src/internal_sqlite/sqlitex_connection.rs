@@ -5,7 +5,8 @@ use libsqlite3_sys::{
 };
 use std::{
     ffi::{CStr, CString, c_int},
-    ptr, sync::Arc,
+    ptr,
+    sync::Arc,
 };
 
 use crate::{
@@ -18,14 +19,14 @@ use crate::{
     utility::utils::prepare_stmt,
 };
 
-unsafe impl Send for LazyConnection {}
-unsafe impl Sync for LazyConnection {}
+unsafe impl Send for Connection {}
+unsafe impl Sync for Connection {}
 
-pub struct LazyConnection {
+pub struct Connection {
     pub db: *mut sqlite3,
 }
 
-impl Drop for LazyConnection {
+impl Drop for Connection {
     fn drop(&mut self) {
         unsafe {
             close_db(self.db);
@@ -33,15 +34,15 @@ impl Drop for LazyConnection {
     }
 }
 
-impl LazyConnection {
+impl Connection {
     pub fn open(filename: &str) -> Result<Arc<Self>, SqliteOpenErrors> {
         let flag = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
-        LazyConnection::open_with_flags(filename, flag)
+        Connection::open_with_flags(filename, flag)
     }
 
     pub fn open_memory() -> Result<Arc<Self>, SqliteOpenErrors> {
         let flag = SQLITE_OPEN_MEMORY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
-        LazyConnection::open_with_flags(":memory:", flag)
+        Connection::open_with_flags(":memory:", flag)
     }
 
     fn open_with_flags(filename: &str, flag: c_int) -> Result<Arc<Self>, SqliteOpenErrors> {

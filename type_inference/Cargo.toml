@@ -3,7 +3,7 @@ name = "type_inference"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "type inference for lazysql"
+description = "type inference for sqlitex"
 
 [dependencies]
 pretty_assertions = "1.4.1"

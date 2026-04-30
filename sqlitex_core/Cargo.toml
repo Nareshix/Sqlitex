@@ -1,9 +1,9 @@
 [package]
-name = "lazysql-core"
+name = "sqlitex_core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "core logic for lazysql"
+description = "core logic for sqlitex"
 
 
 [dependencies]

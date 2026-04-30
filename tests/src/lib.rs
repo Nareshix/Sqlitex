@@ -1,6 +1,6 @@
-use lazysql::lazy_sql;
+use sqlitex::sqlitex;
 
-#[lazy_sql]
+#[sqlitex]
 pub struct ShopDao {
     create_table: sql!(
         " CREATE TABLE Persons (
@@ -23,12 +23,12 @@ pub struct ShopDao {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lazysql::LazyConnection;
+    use sqlitex::Connection;
 
     #[test]
     fn test_shop_flow() -> Result<(), Box<dyn std::error::Error>> {
         // This is the code you had in main()
-        let conn = LazyConnection::open_memory().unwrap();
+        let conn = Connection::open_memory().unwrap();
         let mut dao = ShopDao::new(conn);
 
         dao.create_table()?;
