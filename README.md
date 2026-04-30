@@ -1,3 +1,4 @@
+testing is needed since i renamed everything. lazysql still works and the prev docs is in the crates.io page for now.
 # sqlitex
 
 - sqlitex is a sqlite library for rust
