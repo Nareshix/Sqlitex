@@ -1,7 +1,8 @@
 use libsqlite3_sys::{
-    SQLITE_BUSY, SQLITE_DONE, SQLITE_FLOAT, SQLITE_INTEGER, SQLITE_ROW, SQLITE_TEXT, sqlite3,
-    sqlite3_column_count, sqlite3_column_double, sqlite3_column_int64, sqlite3_column_text,
-    sqlite3_column_type, sqlite3_finalize, sqlite3_step, sqlite3_stmt,
+    SQLITE_BLOB, SQLITE_BUSY, SQLITE_DONE, SQLITE_FLOAT, SQLITE_INTEGER, SQLITE_ROW, SQLITE_TEXT,
+    sqlite3, sqlite3_column_blob, sqlite3_column_bytes, sqlite3_column_count,
+    sqlite3_column_double, sqlite3_column_int64, sqlite3_column_text, sqlite3_column_type,
+    sqlite3_finalize, sqlite3_step, sqlite3_stmt,
 };
 use std::ffi::CStr;
 
@@ -59,7 +60,16 @@ impl Iterator for DynamicRows {
                                 Value::Text(s)
                             }
                         }
-                        // TODO BLOB
+                        SQLITE_BLOB => {
+                            let ptr = sqlite3_column_blob(self.stmt, i);
+                            let len = sqlite3_column_bytes(self.stmt, i) as usize;
+                            if ptr.is_null() || len == 0 {
+                                Value::Blob(Vec::new())
+                            } else {
+                                let slice = std::slice::from_raw_parts(ptr as *const u8, len);
+                                Value::Blob(slice.to_vec())
+                            }
+                        }
                         _ => Value::Null,
                     }
                 };

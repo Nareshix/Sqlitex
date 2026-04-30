@@ -3,7 +3,7 @@ pub enum Value {
     Integer(i64),
     Real(f64),
     Text(String),
-    // Blob(Vec<u8>),
+    Blob(Vec<u8>),
     Null,
 }
 
@@ -14,7 +14,8 @@ impl Value {
             Value::Integer(i) => i.to_string(),
             Value::Real(f) => f.to_string(),
             Value::Text(s) => s.clone(),
-            // Value::Blob(_) => "<Binary Data>".to_string(),
+            //  TODO: some conversion dont make sense
+            Value::Blob(_) => "<Binary Data>".to_string(),
             Value::Null => "NULL".to_string(),
         }
     }
@@ -62,5 +63,14 @@ impl Value {
     /// checks for nulls.
     pub fn is_null(&self) -> bool {
         matches!(self, Value::Null)
+    }
+
+    // TODO, review again
+    /// Returns the value as a byte slice
+    pub fn as_bytes(&self) -> &[u8] {
+        match self {
+            Value::Blob(b) => b,
+            _ => &[],
+        }
     }
 }
