@@ -27,6 +27,41 @@ pub struct Type {
     pub contains_placeholder: bool,
 }
 
+pub fn sqlite_datatype_to_base_type(data_type: &DataType) -> Result<BaseType, String> {
+    match data_type {
+        DataType::Int(_)
+        | DataType::Integer(_)
+        | DataType::TinyInt(_)
+        | DataType::SmallInt(_)
+        | DataType::MediumInt(_)
+        | DataType::BigInt(_)
+        | DataType::BigIntUnsigned(_)
+        | DataType::Int2(_)
+        | DataType::Int8(_) => Ok(BaseType::Integer),
+
+        DataType::Character(_)
+        | DataType::Varchar(_)
+        | DataType::CharVarying(_)
+        | DataType::CharacterVarying(_)
+        | DataType::Nvarchar(_)
+        | DataType::Text
+        | DataType::Clob(_) => Ok(BaseType::Text),
+
+        DataType::Real
+        | DataType::Double(_)
+        | DataType::DoublePrecision
+        | DataType::Numeric(_)
+        | DataType::Decimal(_)
+        | DataType::Float(_) => Ok(BaseType::Real),
+
+        DataType::Blob(_) | DataType::Bytea => Ok(BaseType::Blob),
+
+        DataType::Boolean | DataType::Bool => Ok(BaseType::Bool),
+
+        _ => Err(format!("invalid data type {}", data_type)),
+    }
+}
+
 /// <https://docs.rs/sqlparser/latest/sqlparser/ast/enum.Expr.html>, version 0.59.0
 pub fn evaluate_expr_type(
     expr: &Expr,
@@ -464,44 +499,7 @@ pub fn evaluate_expr_type(
             let input_type = evaluate_expr_type(expr, table_names_from_select, all_tables)?;
 
             // http://www.sqlite.org/datatype3.html#affinity_name_examples
-            let target_base_type = match data_type {
-                DataType::Int(_)
-                | DataType::Integer(_)
-                | DataType::TinyInt(_)
-                | DataType::SmallInt(_)
-                | DataType::MediumInt(_)
-                | DataType::BigInt(_)
-                | DataType::BigIntUnsigned(_)
-                | DataType::Int2(_)
-                | DataType::Int8(_) => BaseType::Integer,
-
-                DataType::Character(_)
-                | DataType::Varchar(_)
-                | DataType::CharVarying(_)
-                | DataType::CharacterVarying(_)
-                // sqlparser does not have  NCHAR(55)
-                // sqlparser does not have  NATIVE CHARACTER(70)
-                | DataType::Nvarchar(_)
-                | DataType::Text
-                | DataType::Clob(_) =>BaseType::Text,
-
-
-                DataType::Blob(_) | DataType::Bytea => BaseType::Blob,
-
-                DataType::Real
-                | DataType::Double(_)
-                | DataType::DoublePrecision
-                | DataType::Numeric(_) //undocumented but works
-                | DataType::Decimal(_) //undocumented but works
-                | DataType::Float(_) => BaseType::Real,
-
-                DataType::Boolean | DataType::Bool => BaseType::Bool,
-
-                // TODO Numeric
-
-                _ => return Err(format!("invalid data type {}", data_type))
-
-            };
+            let target_base_type = sqlite_datatype_to_base_type(data_type)?;
             Ok(Type {
                 base_type: target_base_type,
                 nullable: input_type.nullable,

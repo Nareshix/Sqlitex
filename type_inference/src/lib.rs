@@ -1,12 +1,16 @@
 use std::collections::{HashMap, HashSet};
 
 use sqlparser::ast::{
-    ColumnOption, ColumnOptionDef, CreateTable, DataType, Expr, Value, Visit, Visitor,
+    ColumnOption, ColumnOptionDef, DataType, Expr, Value, Visit, Visitor,
 };
 use sqlparser::{ast::Statement, dialect::GenericDialect, dialect::SQLiteDialect, parser::Parser};
 use std::ops::ControlFlow;
-
+use crate::expr::sqlite_datatype_to_base_type;
 use crate::table::{ColumnInfo, normalize_identifier, normalize_part};
+pub mod binding_patterns;
+pub mod expr;
+pub mod select_patterns;
+pub mod table;
 
 struct CastChecker {
     error: Option<String>,
@@ -41,10 +45,28 @@ pub fn validate_cast_types(sql: &str) -> Result<(), String> {
 
     Ok(())
 }
-pub mod binding_patterns;
-pub mod expr;
-pub mod select_patterns;
-pub mod table;
+
+pub fn validate_create_table_types(sql: &str) -> Result<(), String> {
+    let Ok(statements) = Parser::parse_sql(&SQLiteDialect {}, sql) else {
+        return Ok(());
+    };
+
+    for statement in &statements {
+        if let Statement::CreateTable(create) = statement {
+            for col in &create.columns {
+                sqlite_datatype_to_base_type(&col.data_type)
+                    .map_err(|_| format!(
+                        "Unknown type `{}` for column `{}`.",
+                        col.data_type, col.name
+                    ))?;
+            }
+        }
+    }
+    Ok(())
+}
+
+
+
 
 pub fn validate_single_statement(sql: &str) -> bool {
     let dialect = SQLiteDialect {};
