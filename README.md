@@ -1,36 +1,18 @@
 # Sqlitex
-- Sqlitex is a sqlite library for rust
-- Has compile time guarantees
-- Ergonomic
+Sqlitex is a sqlite library for rust with compile time guarantees. It also has additional features:
+
+- Ergonomic with excellent IDE support
 - Fast. Automatically caches and reuses prepared statements for you
+- Supports [BLOB](./examples/blob/) and [Transactions](./examples/transactions.rs)
+- compile time guarantees for complex sql queries such as, CTEs, Window functions, Datetime functions and more
+- allows fallback of [runtime features](./examples/runtime.rs) when needed
+
 
 # Overview
 
 - [Installation](#installation)
+- [Feature showcase](#feature-showcase)
 - [Quick Start](#quick-start)
-- [Connection methods](#connection-methods)
-  1. [Inline Schema](#1-inline-schema)
-  2. [SQL File](#2-sql-file)
-  3. [Live Database](#3-live-database)
-- [Features](#features)
-  1. [`sql!` Macro](#sql-macro)
-  2. [`sql_escape_hatch!` Macro](#sql_escape_hatch-macro)
-     - [SELECT](#1-select)
-     - [INSERT, UPDATE, DELETE etc.](#2-no-return-type)
-  3. [postgres `::` syntax](#postgres--type-casting-syntax)
-  4. [`all()` and `first()` methods for iterators](#all-and-first-methods-for-iterators)
-  5. [Transactions](#transactions)
-
-- [Dynamic runtime features](#dynamic-runtime-features)
-  1. [How is this different from `sql_escape_hatch!`](#how-is-this-different-from--sql_escape_hatch)
-  2. [Runtime Features](#runtime-features)
-  3. [Transactions at Runtime](#transactions-at-runtime)
-- [Type Mapping](#type-mapping)
-- [Notes](#notes)
-  1. [Strict INSERT Validation](#strict-insert-validation)
-  2. [False positives during compile time checks](#false-positive-during-compile-time-checks)
-  3. [Cannot type cast as Boolean](#cannot-type-cast-as-boolean)
-- [TODOS](#todos)
 
 ## Installation
 
@@ -38,9 +20,31 @@
 cargo add sqlitex
 ```
 
+## Feature showcase
+ Auto generate method signatures with correct types and
+Hover over to see sql code
+
+
+
+  ![usage](https://github.com/Nareshix/sqlitex/raw/main/amedia_for_readme/usage.gif)
+
+(Note: `LazyConnection` has been renamed to `Connection` in newer version. library name was previously called LazySql which has now been renamed to Sqlitex)
+
+
+
+
+Compile time errors with good error messages
+
+  ![error_1](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_1.png?raw=true)
+
+  ![error_2](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_2.png?raw=true)
+
+  ![error_3](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_3.png?raw=true)
+
+
 
 ## Quick Start
-
+For more examples and features, look at the [examples](./examples/) folder and read the [documentations](https://docs.rs/sqlitex/latest/sqlitex/).
 ```rust
 use sqlitex::{Connection, sqlitex};
 
@@ -53,8 +57,9 @@ struct AppDatabase {
     // or else you will get compile-time errors.
     // Alternatively, You could point to a .sql file or an existing db and skip the create table statements in the struct
 
-    // you don't have to import sql! macro. sqlitex brings with it
+    // you don't have to import sql! macro. #[sqlitex] brings with it
     init: sql!("
+    -- Note the NOT NULL constraints which allows us to use concrete types instead of Option<T>, (e.g., `i32` instead of `Option<i32>`)
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY NOT NULL,
             username TEXT NOT NULL,
@@ -62,8 +67,12 @@ struct AppDatabase {
         )
     "),
 
+    //`sql!` accept only a single SQL statement at a time.
+    // Chaining multiple queries with semicolons (;) is not supported
+    //and will result in `EOF error` during compile time.
+
     // postgres `::` type casting is supported. Alternatively u can use `CAST AS` syntax
-    add_user: sql!("INSERT INTO users (id, username, is_active) VALUES (?::REAL, ?, ?)"),
+    add_user: sql!("INSERT INTO users (id, username, is_active) VALUES (?::REAL, ?, ?);"),
 
     // or `id::REAL` instead of `CAST (id AS REAL)`
     get_active_users: sql!("SELECT CAST (id AS REAL), username, is_active as active FROM users WHERE is_active = ?"),
@@ -84,7 +93,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     db.add_user(0.0, "Alice", true)?;
     db.add_user(1.0, "Bob", false)?;
 
-    // active_users is an iterator
+    // active_users is an iterator.
+    // first() and all() methods are additionally provided.
     let active_users = db.get_active_users(true)?;
 
     for user in active_users {
@@ -98,25 +108,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // prints out "0, Alice, true"
 }
 ```
-
----
-
-- `sqlitex` has some nice QOL features like hover over to see sql code and good ide support (note: `LazyConnection` has been renamed to `Connection` in newer version. library name was previously called LazySql which has been renamed to Sqlitex)
-
-  ![usage](https://github.com/Nareshix/sqlitex/raw/main/amedia_for_readme/usage.gif)
-
-- The type inference system and compile time check also works well for `JOIN`, `CASE` `CTEs`, `window function`, `datetime functions` `recursive ctes`, `RETURNING` and more complex scenarios. You can even run `PRAGMA` statements with it.
-
-- Since SQLite defaults to nullable columns, the type inference system defaults to `Option<T>`. To use concrete types (e.g., `i32` instead of `Option<i32>`), explicitly add **NOT NULL** to your table schema.
-
-
-
-
-- Some examples of compile time errors
-
-  ![error_1](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_1.png?raw=true)
-
-  ![error_2](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_2.png?raw=true)
-
-  ![error_3](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_3.png?raw=true)
-
