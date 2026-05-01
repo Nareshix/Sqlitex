@@ -449,7 +449,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## TODOS
 
-1. [upsert](https://www.cockroachlabs.com/blog/sql-upsert/)
 2. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field
 3. cant cast as bool
 
