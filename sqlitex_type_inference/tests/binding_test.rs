@@ -1,4 +1,4 @@
-use type_inference::*;
+use sqlitex_type_inference::*;
 
 use crate::{
     binding_patterns::get_type_of_binding_parameters,

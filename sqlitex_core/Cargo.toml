@@ -9,4 +9,4 @@ description = "core logic for sqlitex"
 [dependencies]
 libsqlite3-sys = {version = "0.35.0", features = ["bundled"]}
 thiserror = "2.0.17"
-type_inference.workspace = true
+sqlitex_type_inference.workspace = true

@@ -1,4 +1,4 @@
-use type_inference::*;
+use sqlitex_type_inference::*;
 
 #[cfg(test)]
 mod tests {

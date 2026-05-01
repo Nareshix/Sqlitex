@@ -1,5 +1,5 @@
 [package]
-name = "type_inference"
+name = "sqlitex_type_inference"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

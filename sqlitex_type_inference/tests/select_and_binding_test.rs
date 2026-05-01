@@ -1,5 +1,5 @@
-use type_inference::select_patterns::get_types_from_select;
-use type_inference::*;
+use sqlitex_type_inference::select_patterns::get_types_from_select;
+use sqlitex_type_inference::*;
 
 use crate::{
     binding_patterns::get_type_of_binding_parameters,

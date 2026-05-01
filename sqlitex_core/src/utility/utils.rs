@@ -4,6 +4,7 @@ use libsqlite3_sys::{
     sqlite3_errcode, sqlite3_exec, sqlite3_finalize, sqlite3_free, sqlite3_open_v2,
     sqlite3_prepare_v2, sqlite3_step, sqlite3_stmt,
 };
+use sqlitex_type_inference::{expr::BaseType, table::ColumnInfo};
 use std::{
     collections::HashMap,
     ffi::{CStr, CString, c_char, c_void},
@@ -11,7 +12,6 @@ use std::{
     path::Path,
     ptr,
 };
-use type_inference::{expr::BaseType, table::ColumnInfo};
 
 use crate::errors::connection::SqlitePrepareErrors;
 

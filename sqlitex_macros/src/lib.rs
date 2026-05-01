@@ -4,15 +4,15 @@ use std::{collections::HashMap, env, path::Path};
 use proc_macro::TokenStream;
 use quote::quote;
 use sqlitex_core::utility::utils::{get_db_schema, validate_sql_syntax_with_sqlite};
-use syn::{
-    Data, DeriveInput, Fields, Ident, ItemStruct, LitStr, Type, parse_macro_input, parse_quote,
-    spanned::Spanned,
-};
-use type_inference::{
+use sqlitex_type_inference::{
     binding_patterns::get_type_of_binding_parameters, expr::BaseType, pg_cast_syntax_to_sqlite,
     rewrite_bool_columns, select_patterns::get_types_from_select, table::create_tables,
     validate_cast_types, validate_create_table_types, validate_insert_strict,
     validate_single_statement,
+};
+use syn::{
+    Data, DeriveInput, Fields, Ident, ItemStruct, LitStr, Type, parse_macro_input, parse_quote,
+    spanned::Spanned,
 };
 
 /// This nicely formats the sql string.

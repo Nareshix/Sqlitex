@@ -4,7 +4,7 @@ members = [
     "sqlitex",
     "sqlitex_core",
     "sqlitex_macros",
-    "type_inference",
+    "sqlitex_type_inference",
     "tests"
 ]
 
@@ -18,4 +18,4 @@ license = "MIT"
 sqlitex ={ path = "./sqlitex", version = "0.1.0"}
 sqlitex_core = { path = "./sqlitex_core", version = "0.1.0" }
 sqlitex_macros = { path = "./sqlitex_macros", version = "0.1.0" }
-type_inference = { path = "./type_inference", version = "0.1.0" }
+sqlitex_type_inference = { path = "./sqlitex_type_inference", version = "0.1.0" }

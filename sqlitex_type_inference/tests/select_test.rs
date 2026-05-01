@@ -1,6 +1,6 @@
 use pretty_assertions::assert_eq;
-use type_inference::select_patterns::get_types_from_select;
-use type_inference::*;
+use sqlitex_type_inference::select_patterns::get_types_from_select;
+use sqlitex_type_inference::*;
 
 use crate::{
     expr::BaseType,

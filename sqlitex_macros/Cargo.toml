@@ -15,4 +15,4 @@ quote = "1.0.42"
 proc-macro2 = "1.0.103"
 sqlformat = "0.5.0"
 sqlitex_core.workspace = true
-type_inference.workspace = true
+sqlitex_type_inference.workspace = true
