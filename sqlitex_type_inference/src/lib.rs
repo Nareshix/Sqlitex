@@ -1,12 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use sqlparser::ast::{
-    ColumnOption, ColumnOptionDef, DataType, Expr, Value, Visit, Visitor,
-};
-use sqlparser::{ast::Statement, dialect::GenericDialect, dialect::SQLiteDialect, parser::Parser};
-use std::ops::ControlFlow;
 use crate::expr::sqlite_datatype_to_base_type;
 use crate::table::{ColumnInfo, normalize_identifier};
+use sqlparser::ast::{ColumnOption, ColumnOptionDef, DataType, Expr, Value, Visit, Visitor};
+use sqlparser::{ast::Statement, dialect::GenericDialect, dialect::SQLiteDialect, parser::Parser};
+use std::ops::ControlFlow;
 pub mod binding_patterns;
 pub mod expr;
 pub mod select_patterns;
@@ -54,30 +52,31 @@ pub fn validate_create_table_types(sql: &str) -> Result<(), String> {
     for statement in &statements {
         if let Statement::CreateTable(create) = statement {
             for col in &create.columns {
-                sqlite_datatype_to_base_type(&col.data_type)
-                    .map_err(|_| format!(
+                sqlite_datatype_to_base_type(&col.data_type).map_err(|_| {
+                    format!(
                         "Unknown type `{}` for column `{}`.",
                         col.data_type, col.name
-                    ))?;
+                    )
+                })?;
             }
         }
     }
     Ok(())
 }
 
-
-
-
-pub fn validate_single_statement(sql: &str) -> bool {
+pub fn validate_single_statement(sql: &str) -> Result<(), String> {
     let dialect = SQLiteDialect {};
     if let Ok(ast) = Parser::parse_sql(&dialect, sql)
         && ast.len() > 1
     {
-        return false;
+        return Err(
+            "Multiple SQL statements detected. Split them into separate sql!() macros."
+                .to_string(),
+        )
     }
-    true
-}
+    Ok(())
 
+}
 pub fn validate_insert_strict(
     sql: &str,
     tables: &HashMap<String, Vec<ColumnInfo>>,
@@ -280,7 +279,6 @@ pub fn rewrite_bool_columns(sql: &str) -> String {
     for stmt in &mut ast {
         if let Statement::CreateTable(create) = stmt {
             for col in &mut create.columns {
-
                 let is_bool = matches!(&col.data_type, DataType::Boolean | DataType::Bool);
                 if is_bool {
                     col.data_type = DataType::Integer(None);

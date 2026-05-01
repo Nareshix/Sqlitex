@@ -201,12 +201,8 @@ fn expand(
             validate_create_table_types(&sql_query)
                 .map_err(|msg| syn::Error::new(sql_lit.span(), msg))?;
 
-            if !validate_single_statement(&sql_query) {
-                return Err(syn::Error::new(
-                    sql_lit.span(),
-                    "Multiple SQL statements detected. \
-                     Please split them into separate struct fields.",
-                ));
+            if let Err(err_msg) = validate_single_statement(&sql_query) {
+                return Err(syn::Error::new(sql_lit.span(), err_msg));
             }
 
             let transpiled_sql_lit = syn::LitStr::new(&sql_query, sql_lit.span());
