@@ -9,7 +9,9 @@ use syn::{
     spanned::Spanned,
 };
 use type_inference::{
-    binding_patterns::get_type_of_binding_parameters, expr::BaseType, pg_cast_syntax_to_sqlite, select_patterns::get_types_from_select, table::create_tables, validate_cast_types, validate_insert_strict, validate_single_statement
+    binding_patterns::get_type_of_binding_parameters, expr::BaseType, pg_cast_syntax_to_sqlite,
+    select_patterns::get_types_from_select, table::create_tables, validate_cast_types,
+    validate_insert_strict, validate_single_statement,
 };
 
 /// This nicely formats the sql string.
@@ -290,8 +292,7 @@ fn expand(
                 }
             };
 
-            let formated_sql_query = format_sql(&sql_query);
-            let doc_comment = format!(" \n**SQL**\n```sql\n{}", formated_sql_query);
+            let doc_comment = format!(" \n**SQL**\n```sql\n{}", format_sql(&sql_lit.value()));
 
             field.ty = parse_quote!(sqlitex::internal_sqlite::sqlitex_statement::SqlitexStmt);
 
