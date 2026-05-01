@@ -1,7 +1,5 @@
-testing is needed since i renamed everything. lazysql still works and the prev docs is in the crates.io page for now.
-# sqlitex
-
-- sqlitex is a sqlite library for rust
+# Sqlitex
+- Sqlitex is a sqlite library for rust
 - Has compile time guarantees
 - Ergonomic
 - Fast. Automatically caches and reuses prepared statements for you
@@ -55,14 +53,15 @@ struct AppDatabase {
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY NOT NULL,
             username TEXT NOT NULL,
-            is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)) -- sqlitex infers this as bool. more info below
+            is_active BOOL NOT NULL
         )
     "),
 
     // postgres `::` type casting is supported. Alternatively u can use `CAST AS` syntax
-    add_user: sql!("INSERT INTO users (id, username, is_active) VALUES (?::real, ?, ?)"),
+    add_user: sql!("INSERT INTO users (id, username, is_active) VALUES (?::REAL, ?, ?)"),
 
-    get_active_users: sql!("SELECT id::real, username, is_active as active FROM users WHERE is_active = ?"),
+    // or `id::REAL` instead of `CAST (id AS REAL)`
+    get_active_users: sql!("SELECT CAST (id AS REAL), username, is_active as active FROM users WHERE is_active = ?"),
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -87,27 +86,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // u can access the fields specifically if you want
         // Respects aliases (is_active -> active)
         let user = user?;
-        println!("{}, {}, {}", user.active, user.username, user.id); // note user.id is float as we type casted it in the sql stmt
+        println!("{}, {}, {}", user.id, user.username, user.active); // note user.id is float as we type casted it in the sql stmt
     }
 
     Ok(())
-    // prints out "true, Alice, 0"
+    // prints out "0, Alice, true"
 }
 ```
 
 ---
 
-- `sqlitex` has some nice QOL features like hover over to see sql code and good ide support
+- `sqlitex` has some nice QOL features like hover over to see sql code and good ide support (note: `LazyConnection` has been renamed to `Connection` in newer version)
 
   ![usage](https://github.com/Nareshix/sqlitex/raw/main/amedia_for_readme/usage.gif)
 
-- The type inference system and compile time check also works well for `JOIN`, `CASE` `ctes`, `window function`, `datetime functions` `recursive ctes`, `RETURNING` and more complex scenarios. You can even run `PRAGMA` statements with it.
+- The type inference system and compile time check also works well for `JOIN`, `CASE` `CTEs`, `window function`, `datetime functions` `recursive ctes`, `RETURNING` and more complex scenarios. You can even run `PRAGMA` statements with it.
 
-- Since SQLite defaults to nullable columns, the type inference system defaults to Option<T>. To use concrete types (e.g., String instead of Option<String>), explicitly add **NOT NULL** to your table columns
+- Since SQLite defaults to nullable columns, the type inference system defaults to `Option<T>`. To use concrete types (e.g., `i32` instead of `Option<i32>`), explicitly add **NOT NULL** to your table schema.
 
 
 
-  For instance,
+
+- Some examples of compile time errors
 
   ![error_1](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_1.png?raw=true)
 
@@ -145,297 +145,27 @@ Point to an existing `.db` binary file. `sqlitex` inspects the live metadata to 
 struct App { ... }
 ```
 
-
-## Features
-
-the `sqlitex!` macro brings `sql!` and `sql_escape_hatch!` macro. so there is no need to import them. and they can only be used within structs defined with `sqlitex!`
-
-Note: Both `sql!` and `sql_escape_hatch!` accept only a single SQL statement at a time. Chaining multiple queries with semicolons (;) is not supported and will result in compile time error.
-
-1. ### `sql!` Macro
-
-   Always prefer to use this. It automatically:
-   1. **Infers Inputs:** Maps `?` to Rust types (`i64`, `f64`, `String`, `bool`).
-   2. **Generates Outputs:** For `SELECT` queries, creates a struct named after the field
-
-2. ### `sql_escape_hatch!` Macro
-   - Use this only when you need the sql to to be executed at runtime with some compile time guarantees. **Rarely needed in practice**. You would know when you need it.
-
-   - Originally, `sql_escape_hatch!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
-
-   #### a. `SELECT`
-
-   You can map a query result to any struct by deriving `SqlMapping`.
-
-   `SqlMapping` maps columns by **index**, not by name. The order of fields in your struct **must** match the order of columns in your `SELECT` statement exactly.
-
-   ```rust
-   use sqlitex::{SqlMapping, Connection, sqlitex};
-
-   #[derive(Debug, SqlMapping)]
-   pub struct UserStats { // must be pub
-       total: i64,      // Maps to column index 0
-       status: String,  // Maps to column index 1
-   }
-
-   #[sqlitex]
-   struct Analytics {
-       get_stats: sql_escape_hatch!(
-           UserStats, // pass in the struct so you can access the fields later
-           "SELECT count(*) as total, status
-           FROM users
-           WHERE id > ? AND login_count >= ?
-           GROUP BY status",
-           i64, // Maps to 1st '?'
-           i64  // Maps to 2nd '?'
-       )
-   }
-
-   fn foo{
-       let conn = Connection::open_memory()?;
-       let mut db = Analytics::new(conn);
-
-       let foo = db.get_stats(100, 5)?;
-       for i in foo{
-           // i.total and i.status is accessible
-       }
-   }
-   ```
-
-   #### b. No Return Type
-
-   For `INSERT`, `UPDATE`, or `DELETE` statements
-
-   ```rust
-   #[sqlitex]
-   struct Logger {
-       log: sql_escape_hatch!("INSERT INTO logs (msg, level) VALUES (?, ?)", String, i64)
-   }
-   // can continue to use it normally.
-   ```
-
-3. ### Postgres `::` type casting syntax
-
-   Note: bool type casting is not supported for now
-
-   ```rust
-   sql!("SELECT price::text FROM items")
-
-   // Compiles to:
-   // "SELECT CAST(price AS TEXT) FROM items"
-   ```
-
-4. ### `all()` and `first()` methods for iterators
-   - `all()` collects the iterator into a vector. Just a lightweight wrapper around .collect() to prevent adding type hints (Vec<\_>) in code
-
-     ```rust
-     let results = db.get_active_users(false)?;
-     let collected_results =results.all()?; // returns a Vec of owned  results from the returned rows
-     ```
-
-   - `first()` Returns the first row if available, or None if the query returned no results.
-
-     ```rust
-     let results = db.get_active_users(false)?;
-     let first_result = results.first()?.unwrap(); // returns the first row from the returned rows
-     ```
-
-5. ### Transactions
-
-- Note: you cannot name a field called `transaction` in the struct since its a reserved method name. Failiure to do so will result in a compile time error.
-
-  ```rust
-      use sqlitex::{Connection, sqlitex};
-
-      #[sqlitex]
-      struct DB {
-          // We add UNIQUE to trigger a real database error later
-          init: sql!(
-              "CREATE TABLE IF NOT EXISTS users
-                      (id INTEGER PRIMARY KEY NOT NULL,
-                      name TEXT UNIQUE NOT NULL)"
-          ),
-
-          add: sql!("INSERT INTO users (name) VALUES (?)"),
-
-          count: sql!("SELECT count(*) as count FROM users"),
-      }
-
-      fn main() -> Result<(), Box<dyn std::error::Error>> {
-          let conn = Connection::open_memory()?;
-          let mut db = DB::new(conn);
-          db.init()?;
-
-          // Successful Transaction (Batch Commit)
-          let results = db.transaction(|tx| {
-              tx.add("Alice")?;
-              tx.add("Bob")?;
-
-              let count = tx.count()?.all()?;
-
-              Ok(count) // if you are not returning anything, u should return it as `Ok(())`
-          })?;
-
-          println!("{:?}", results[0].count); // prints out '2'
-
-          // Failed Transaction (Automatic Rollback)
-          // We try to add Charlie, then add Alice again.
-          // Since 'Alice' exists, the second command fails, causing the WHOLE block to revert.
-          // If you are running this on ur computer, it is expected to see this in the terminal:
-          // "Error: WriteBinding(Step(SqliteFailure { code: 19, error_msg: "UNIQUE constraint failed: users.name" }))"
-          db.transaction(|tx| {
-              tx.add("Charlie")?; // 1. Writes successfully (pending)
-              tx.add("Alice")?; // 2. Fails (Duplicate) -> Triggers Rollback
-              Ok(())
-          })?;
-
-
-
-          Ok(())
-      }
-  ```
-
 ## Type Mapping
 
-| SQLite Context | Rust Type         | Notes                                                                                                                                                                                                                                       |
-| :------------- | :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `TEXT`         | `String` / `&str` | -                                                                                                                                                                                                                                           |
-| `INTEGER`      | `i64`             | -                                                                                                                                                                                                                                           |
-| `REAL`         | `f64`             | Includes `FLOAT`, `DOUBLE`                                                                                                                                                                                                                  |
-| `BOOLEAN`      | `bool`            | Requires `CHECK (col IN (0,1))` or `Check (col = 0 OR col = 1)`. You could technically use `BOOL` or `BOOLEAN` as the data type when creating table (due to sqlite flexible type nature) and it would work as well. But this is discouraged |
-| Nullable       | `Option<T>`       | When a column or expr has a possibility of returning `NULL`, this will be returned. its recommended to use `NOT NULL` when creating tables so that ergonomic-wise you don't always have to use Some(T) when adding parameters               |
+The tables covers the most common types which are used.
 
-## Dynamic runtime features
+| SQLite Type                  | Rust Type           |
+|-----------------------------|---------------------|
+| `TEXT`                      | `String` / `&str`   |
+| `INTEGER` / `INT`           | `i64`               |
+| `REAL` / `FLOAT` / `DOUBLE` / `NUMERIC` / `DECIMAL` | `f64`               |
+| `BOOLEAN` / `BOOL`          | `bool`              |
+| `BLOB`                      | `Vec<u8>` / `&[u8]` |
+| `NULL` (nullable columns)   | `Option<T>`         |
 
-- **Strongly** recommended to use the `sql!` macro for most use-cases. Dynamic runtime features are only needed in **rare** scenarios.
 
-### How is this different from `sql_escape_hatch!`
-
-- `sql_escape_hatch!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
-
-### Runtime Features
-
-- Dynamic runtime features happens fully at runtime. All the features are stated below in this code block.
-
-  ```rust
-
-  use sqlitex::Connection;
-
-  fn main() -> Result<(), Box<dyn std::error::Error>> {
-      let conn = Connection::open_memory()?;
-
-      // Use execute_dynamic for write statements (CREATE, INSERT, UPDATE, DELETE, etc.)
-      conn.execute_dynamic(
-          "CREATE TABLE products (
-              id INTEGER PRIMARY KEY,
-              name TEXT NOT NULL,
-              price REAL,
-              in_stock INTEGER
-          )",
-      )?;
-
-      // _rows_affected variable is the number of rows modified, which in this case is an insert of 3 rows
-      let _rows_affected = conn.execute_dynamic(
-          "INSERT INTO products (name, price, in_stock) VALUES
-          ('Laptop', 999.99, 1),
-          ('Mouse', 25.50, 1),
-          ('Keyboard', 75.00, 0)",
-      )?;
-
-      // Use query_dynamic for running SELECT statements
-      let results = conn.query_dynamic("SELECT * FROM products")?;
-      println!("Headers: {:?}", results.column_names); // id, name, price, in_stock
-
-      // row_result is an iterator
-      for row_result in results {
-          let row = row_result?;
-          for value in row {
-              print!("{:?} ", value); // or u could do value.as_string(), value.as_f64(), value.as_i64(), etc. to convert the enum to specific type
-          }
-      }
-
-      // u can use helper functions like first() or all() to get a vector of rows.
-      let _first_row = conn
-          .query_dynamic("SELECT name, price FROM products WHERE id = 1")?
-          .first()?; // or .all()? for all rows
-
-      Ok(())
-  }
-
-  ```
-
-### Transactions at Runtime
-
-```rust
-use sqlitex::Connection;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = Connection::open_memory()?;
-
-    conn.execute_dynamic("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT UNIQUE)")?;
-
-    // Successful Transaction
-    let user_count = conn.transaction(|tx| {
-        tx.execute_dynamic("INSERT INTO users (name) VALUES ('Alice')")?;
-        tx.execute_dynamic("INSERT INTO users (name) VALUES ('Bob')")?;
-
-        let row = tx
-            .query_dynamic("SELECT COUNT(*) FROM users")?
-            .first()?
-            .unwrap();
-        Ok(row[0].as_i32()) // Return the count
-    })?;
-
-    println!("{}", user_count); // Prints 2
-
-    // 3. Failed Transaction (Automatic Rollback)
-    // We try to add Charlie, then Alice again (who already exists).
-    let result = conn.transaction(|tx| {
-        tx.execute_dynamic("INSERT INTO users (name) VALUES ('Charlie')")?; // Succeeds
-        tx.execute_dynamic("INSERT INTO users (name) VALUES ('Alice')")?; // Fails (UNIQUE constraint)
-        Ok(())
-    });
-
-    if let Err(e) = result {
-        println!("{}", e);
-    }
-
-    // Charlie should NOT exist in the DB because the transaction reverted.
-    let final_count = conn
-        .query_dynamic("SELECT COUNT(*) FROM users")?
-        .first()?
-        .unwrap()[0]
-        .as_i32();
-
-    println!("Charlie not added. Total count: {}", final_count); // prints 2 since Charlie was not added.
-
-    Ok(())
-}
-
-```
-
-## Notes
-
-### Strict INSERT Validation
-
-- Although standard SQL allows inserting any number of columns to a table, sqlitex checks INSERT statements at compile time. If you omit any column (except for `AUTOINCREMENT` and `DEFAULT`), code will fail to compile. This means you must either specify all columns explicitly, or use implicit insertion for all columns. This is done to prevent certain runtime errors such as `NOT NULL constraint failed` and more.
-
-### False positives during compile time checks
-
-- I tried my best to support as many sql and sqlite-specific queries as possible.
-
-- This isnt naturally easy in sqlite as they dont provide any api to give us type inference and schema awareness validation.
-
-- In the extremely rare case of a False positives (valid SQL syntax **fails** or type inference **incorrectly fails**), you can fall back to the `sql_escape_hatch!` macro. Would appreciate it if you could open an issue as well.
-
-### Cannot type cast as Boolean
-
-- This is a limitation of sqlite since it doesn't natively have `boolean` type. I may find some workaround in the future but it's not guaranteed. For now if you want to type cast as bool, u have to type cast it as an `integer` and add either 1 (`TRUE`) or 0 (`False`)
 
 ## TODOS
 1. rn blob loads everything to memory. add streaming support for blob
 
 2. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field
+nutype/nnn support basic
+upsert, INSERT OR REPLACE INTO users (id, name) VALUES (?, ?)
 
 4. bulk insert
 5. begin immediate
@@ -500,3 +230,4 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+strict table can break certain features like bool datatype

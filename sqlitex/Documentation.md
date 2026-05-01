@@ -1,4 +1,3 @@
-testing is needed since i renamed everything. lazysql still works and the prev docs is in the crates.io page for now.
 # sqlitex
 
 - sqlitex is a sqlite library for rust
@@ -87,11 +86,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // u can access the fields specifically if you want
         // Respects aliases (is_active -> active)
         let user = user?;
-        println!("{}, {}, {}", user.active, user.username, user.id); // note user.id is float as we type casted it in the sql stmt
+        println!("{}, {}, {}", user.id, user.username, user.active); // note user.id is float as we type casted it in the sql stmt
     }
 
     Ok(())
-    // prints out "true, Alice, 0"
+    // prints out "0, Alice, true"
 }
 ```
 
@@ -154,11 +153,12 @@ Note: Both `sql!` and `sql_escape_hatch!` accept only a single SQL statement at 
 
 1. ### `sql!` Macro
 
-   Always prefer to use this. It automatically:
+   **Always prefer** to use this. It automatically:
    1. **Infers Inputs:** Maps `?` to Rust types (`i64`, `f64`, `String`, `bool`).
    2. **Generates Outputs:** For `SELECT` queries, creates a struct named after the field
 
 2. ### `sql_escape_hatch!` Macro
+ #TODO
    - Use this only when you need the sql to to be executed at runtime with some compile time guarantees. **Rarely needed in practice**. You would know when you need it.
 
    - Originally, `sql_escape_hatch!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
@@ -216,7 +216,6 @@ Note: Both `sql!` and `sql_escape_hatch!` accept only a single SQL statement at 
 
 3. ### Postgres `::` type casting syntax
 
-   Note: bool type casting is not supported for now
 
    ```rust
    sql!("SELECT price::text FROM items")
@@ -297,21 +296,23 @@ Note: Both `sql!` and `sql_escape_hatch!` accept only a single SQL statement at 
 
 ## Type Mapping
 
-| SQLite Context | Rust Type         | Notes                                                                                                                                                                                                                                       |
-| :------------- | :---------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `TEXT`         | `String` / `&str` | -                                                                                                                                                                                                                                           |
-| `INTEGER`      | `i64`             | -                                                                                                                                                                                                                                           |
-| `REAL`         | `f64`             | Includes `FLOAT`, `DOUBLE`                                                                                                                                                                                                                  |
-| `BOOLEAN`      | `bool`            | Requires `CHECK (col IN (0,1))` or `Check (col = 0 OR col = 1)`. You could technically use `BOOL` or `BOOLEAN` as the data type when creating table (due to sqlite flexible type nature) and it would work as well. But this is discouraged |
-| Nullable       | `Option<T>`       | When a column or expr has a possibility of returning `NULL`, this will be returned. its recommended to use `NOT NULL` when creating tables so that ergonomic-wise you don't always have to use Some(T) when adding parameters               |
+The tables covers the most common types which are used.
+
+| SQLite Type                  | Rust Type           |
+|-----------------------------|---------------------|
+| `TEXT`                      | `String` / `&str`   |
+| `INTEGER` / `INT`           | `i64`               |
+| `REAL` / `FLOAT` / `DOUBLE` / `NUMERIC` / `DECIMAL` | `f64`               |
+| `BOOLEAN` / `BOOL`          | `bool`              |
+| `BLOB`                      | `Vec<u8>` / `&[u8]` |
+| `NULL` (nullable columns)   | `Option<T>`         |
+
+[All possible type affinities in sqlite is also covered](https://www.sqlite.org/datatype3.html#affinity_name_examples) but it's not recommended to use all of them other than the ones suggested in the table above. Boolean types would look diff in the link because sqlite doesn't natively have them and this library handles it gracefully for us.
 
 ## Dynamic runtime features
 
 - **Strongly** recommended to use the `sql!` macro for most use-cases. Dynamic runtime features are only needed in **rare** scenarios.
 
-### How is this different from `sql_escape_hatch!`
-
-- `sql_escape_hatch!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
 
 ### Runtime Features
 
@@ -420,7 +421,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - Although standard SQL allows inserting any number of columns to a table, sqlitex checks INSERT statements at compile time. If you omit any column (except for `AUTOINCREMENT` and `DEFAULT`), code will fail to compile. This means you must either specify all columns explicitly, or use implicit insertion for all columns. This is done to prevent certain runtime errors such as `NOT NULL constraint failed` and more.
 
-### False positives during compile time checks
+### - Valid SQL syntax or type inference fails at compile-time?
+
 
 - I tried my best to support as many sql and sqlite-specific queries as possible.
 
@@ -428,14 +430,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - In the extremely rare case of a False positives (valid SQL syntax **fails** or type inference **incorrectly fails**), you can fall back to the `sql_escape_hatch!` macro. Would appreciate it if you could open an issue as well.
 
-### Cannot type cast as Boolean
-
-- This is a limitation of sqlite since it doesn't natively have `boolean` type. I may find some workaround in the future but it's not guaranteed. For now if you want to type cast as bool, u have to type cast it as an `integer` and add either 1 (`TRUE`) or 0 (`False`)
 
 ## TODOS
 1. rn blob loads everything to memory. add streaming support for blob
 
 2. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field
+nutype/nnn support basic
+upsert, INSERT OR REPLACE INTO users (id, name) VALUES (?, ?)
 
 4. bulk insert
 5. begin immediate
