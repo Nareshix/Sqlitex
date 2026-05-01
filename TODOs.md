@@ -23,3 +23,4 @@ make the readme shorter
 in case CREATE TABLE is done after a random query in sql_struct should i allow it? like scan whole struct first instead of top down? at least show a warning
 
 sqlitex_type_inference crate needs some refactoring as the codebase is q messy
+add contributing.md cuz u seem to forget wht u write lol then spenda lot of time looking though code to rmb wht u did. gonna make same mistake again rn :p
