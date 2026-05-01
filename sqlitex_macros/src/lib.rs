@@ -139,9 +139,11 @@ fn expand(
     if let Some(path) = db_path_lit {
         let db_path = path.value();
 
-        if db_path.ends_with(".sql")
-            && let Ok(content) = std::fs::read_to_string(&db_path)
-        {
+        if db_path.ends_with(".sql") {
+            let content = std::fs::read_to_string(&db_path).map_err(|e| {
+                syn::Error::new(path.span(), format!("Failed to read {}: {}", db_path, e))
+            })?;
+
             validate_cast_types(&content)
                 .map_err(|msg| syn::Error::new(path.span(), format!("In {}: {}", db_path, msg)))?;
 
