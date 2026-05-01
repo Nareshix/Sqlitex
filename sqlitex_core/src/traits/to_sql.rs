@@ -1,6 +1,5 @@
 use libsqlite3_sys::{self as ffi, SQLITE_TRANSIENT, sqlite3_stmt};
 
-// BLOB not implemented yet. TODO
 pub trait ToSql {
     /// - it is ok for it to be self consuming (tho it only applies to String)
     ///   because we are not gonna be using this rust type anymore
@@ -82,5 +81,11 @@ impl ToSql for &[u8] {
                 ffi::SQLITE_TRANSIENT(),
             )
         }
+    }
+}
+
+impl ToSql for Vec<u8> {
+    unsafe fn bind_to(self, stmt: *mut sqlite3_stmt, index: i32) -> i32 {
+        unsafe { self.as_slice().bind_to(stmt, index) }
     }
 }
