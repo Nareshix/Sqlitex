@@ -16,7 +16,7 @@ testing is needed since i renamed everything. lazysql still works and the prev d
   3. [Live Database](#3-live-database)
 - [Features](#features)
   1. [`sql!` Macro](#sql-macro)
-  2. [`sql_runtime!` Macro](#sql_runtime-macro)
+  2. [`sql_escape_hatch!` Macro](#sql_escape_hatch-macro)
      - [SELECT](#1-select)
      - [INSERT, UPDATE, DELETE etc.](#2-no-return-type)
   3. [postgres `::` syntax](#postgres--type-casting-syntax)
@@ -24,7 +24,7 @@ testing is needed since i renamed everything. lazysql still works and the prev d
   5. [Transactions](#transactions)
 
 - [Dynamic runtime features](#dynamic-runtime-features)
-  1. [How is this different from `sql_runtime!`](#how-is-this-different-from--sql_runtime)
+  1. [How is this different from `sql_escape_hatch!`](#how-is-this-different-from--sql_escape_hatch)
   2. [Runtime Features](#runtime-features)
   3. [Transactions at Runtime](#transactions-at-runtime)
 - [Type Mapping](#type-mapping)
@@ -148,9 +148,9 @@ struct App { ... }
 
 ## Features
 
-the `sqlitex!` macro brings `sql!` and `sql_runtime!` macro. so there is no need to import them. and they can only be used within structs defined with `sqlitex!`
+the `sqlitex!` macro brings `sql!` and `sql_escape_hatch!` macro. so there is no need to import them. and they can only be used within structs defined with `sqlitex!`
 
-Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a time. Chaining multiple queries with semicolons (;) is not supported and will result in compile time error.
+Note: Both `sql!` and `sql_escape_hatch!` accept only a single SQL statement at a time. Chaining multiple queries with semicolons (;) is not supported and will result in compile time error.
 
 1. ### `sql!` Macro
 
@@ -158,10 +158,10 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
    1. **Infers Inputs:** Maps `?` to Rust types (`i64`, `f64`, `String`, `bool`).
    2. **Generates Outputs:** For `SELECT` queries, creates a struct named after the field
 
-2. ### `sql_runtime!` Macro
+2. ### `sql_escape_hatch!` Macro
    - Use this only when you need the sql to to be executed at runtime with some compile time guarantees. **Rarely needed in practice**. You would know when you need it.
 
-   - Originally, `sql_runtime!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
+   - Originally, `sql_escape_hatch!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
 
    #### a. `SELECT`
 
@@ -180,7 +180,7 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
 
    #[sqlitex]
    struct Analytics {
-       get_stats: sql_runtime!(
+       get_stats: sql_escape_hatch!(
            UserStats, // pass in the struct so you can access the fields later
            "SELECT count(*) as total, status
            FROM users
@@ -209,7 +209,7 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
    ```rust
    #[sqlitex]
    struct Logger {
-       log: sql_runtime!("INSERT INTO logs (msg, level) VALUES (?, ?)", String, i64)
+       log: sql_escape_hatch!("INSERT INTO logs (msg, level) VALUES (?, ?)", String, i64)
    }
    // can continue to use it normally.
    ```
@@ -309,9 +309,9 @@ Note: Both `sql!` and `sql_runtime!` accept only a single SQL statement at a tim
 
 - **Strongly** recommended to use the `sql!` macro for most use-cases. Dynamic runtime features are only needed in **rare** scenarios.
 
-### How is this different from `sql_runtime!`
+### How is this different from `sql_escape_hatch!`
 
-- `sql_runtime!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
+- `sql_escape_hatch!` is intended more of an escape hatch when you cant use the `sql!` macro due to false positives. False positives are **extremely extremely rare**. Look below for more info. This is why u still have to define structs for SELECT statements and specify types for binding parameters for non-SELECT statements
 
 ### Runtime Features
 
@@ -426,7 +426,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - This isnt naturally easy in sqlite as they dont provide any api to give us type inference and schema awareness validation.
 
-- In the extremely rare case of a False positives (valid SQL syntax **fails** or type inference **incorrectly fails**), you can fall back to the `sql_runtime!` macro. Would appreciate it if you could open an issue as well.
+- In the extremely rare case of a False positives (valid SQL syntax **fails** or type inference **incorrectly fails**), you can fall back to the `sql_escape_hatch!` macro. Would appreciate it if you could open an issue as well.
 
 ### Cannot type cast as Boolean
 
@@ -443,7 +443,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 7. better egonomic for bulk operation? maybe.
 8. url crate?
   1. it follows an opinionated API design
-  2. Doesn't support Batch Execution ergonomically. You would need to resort to `sql!()` or `sql_runtime!()` macro
+  2. Doesn't support Batch Execution ergonomically. You would need to resort to `sql!()` or `sql_escape_hatch!()` macro
 
 show how blob is used in READEME
 //TODO sqlite3_busy_timeout does return an int. It is nearly a gurantee for this

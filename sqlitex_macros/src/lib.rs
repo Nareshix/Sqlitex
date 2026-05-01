@@ -37,11 +37,11 @@ impl syn::parse::Parse for RuntimeSqlInput {
         let sql;
 
         if input.peek(syn::LitStr) {
-            // sql_runtime!("UPDATE...", arg, arg)
+            // sql_escape_hatch!("UPDATE...", arg, arg)
             return_type = None;
             sql = input.parse()?;
         } else {
-            //  sql_runtime!(UserDTO, "SELECT...", arg, arg)
+            //  sql_escape_hatch!(UserDTO, "SELECT...", arg, arg)
             return_type = Some(input.parse()?);
             input.parse::<syn::Token![,]>()?; // Eat comma
             sql = input.parse()?;
@@ -66,7 +66,7 @@ impl syn::parse::Parse for RuntimeSqlInput {
 
 fn parse_runtime_macro(ty: &syn::Type) -> syn::Result<Option<RuntimeSqlInput>> {
     if let syn::Type::Macro(type_macro) = ty
-        && type_macro.mac.path.is_ident("sql_runtime")
+        && type_macro.mac.path.is_ident("sql_escape_hatch")
     {
         let parsed: RuntimeSqlInput = syn::parse2(type_macro.mac.tokens.clone())?;
         return Ok(Some(parsed));
