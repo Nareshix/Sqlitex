@@ -122,10 +122,8 @@ This library offers
 
 By enabling STRICT tables you will lose all of these features.
 
-[you can read it up more on here.](./sqlitex/Documentation.md#a-note-on-strict-tables)
-
+[you can read it up more on here](./sqlitex/Documentation.md#a-note-on-strict-tables)
 or
-
 [if you are only interested in having compile time checks for boolean using pure sqlite approach](./sqlitex/Documentation.md#how-to-get-boolean-support-for-compile-time-checks-without-using-sqlitexs-bool-or-boolean-data-type)
 # Additional Links
 For more examples and features, look at the [examples](./examples/) folder and read the [documentations](https://docs.rs/sqlitex/latest/sqlitex/).
