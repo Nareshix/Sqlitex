@@ -1,5 +1,7 @@
 ## TODOS
 
+1. connection via sql file is too slwo for ocmpoile time checks. in rust analyser at least. not a huge fdeal after the inital stage but still. Also the compiler will still be correct nonetheless just rust anlayser,
+
 1. rn blob loads everything to memory. maybe add streaming support for blob?
 
 2. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field via nutype/nnn
