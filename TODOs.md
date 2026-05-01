@@ -1,10 +1,12 @@
 ## TODOS
 
-1. connection via sql file is too slwo for ocmpoile time checks. in rust analyser at least. not a huge fdeal after the inital stage but still. Also the compiler will still be correct nonetheless just rust anlayser,
+1. connection via sql file is too slwo for ocmpoile time checks. in rust analyser at least. not a huge fdeal after the inital stage but still. Also the compiler will still be correct nonetheless just rust anlayse. have to keep restartin gfserver
+2. 
+3. casting is abit too flexible. it dont make sense for a string to be type casted as bool. and rn for some reason one would expect it ot betrue since theres smth but its giving us fasle. so wrong ans at that too. easier to disable
 
-1. rn blob loads everything to memory. maybe add streaming support for blob?
+4. rn blob loads everything to memory. maybe add streaming support for blob?
 
-2. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field via nutype/nnn
+5. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field via nutype/nnn
 
 upsert - INSERT OR REPLACE INTO users (id, name) VALUES (?, ?)
 
