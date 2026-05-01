@@ -44,9 +44,14 @@ cargo add sqlitex
 ```rust
 use sqlitex::{Connection, sqlitex};
 
+// Alternatively,
+//#[sqlitex("path/to/db.sql")] to point to a .sql file with create table statements.
+//#[sqlitex("path/to/existing.db")] to point to an existing database file.
 #[sqlitex]
 struct AppDatabase {
     // all create tables must be at the top before read/write logic in order to get compile time checks
+    // or else you will get compile-time errors.
+    // Alternatively, You could point to a .sql file or an existing db and skip the create table statements in the struct
 
     // you don't have to import sql! macro. sqlitex brings with it
     init: sql!("
@@ -96,7 +101,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ---
 
-- `sqlitex` has some nice QOL features like hover over to see sql code and good ide support (note: `LazyConnection` has been renamed to `Connection` in newer version)
+- `sqlitex` has some nice QOL features like hover over to see sql code and good ide support (note: `LazyConnection` has been renamed to `Connection` in newer version. library name was previously called LazySql which has been renamed to Sqlitex)
 
   ![usage](https://github.com/Nareshix/sqlitex/raw/main/amedia_for_readme/usage.gif)
 
@@ -113,121 +118,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   ![error_2](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_2.png?raw=true)
 
-## Connection methods
+  ![error_3](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_3.png?raw=true)
 
-`sqlitex` supports 3 ways to define your schema, depending on your workflow.
-
-### 1. Inline Schema
-
-As seen in the Quick Start. Define tables inside the struct.
-
-```rust
-#[sqlitex]
-struct App { ... }
-```
-
-### 2. SQL File
-
-Point to a `.sql` file. The compile time checks will be done against this sql file (ensure that there is `CREATE TABLE`). `sqlitex` watches this file; if you edit it, rust recompiles automatically to ensure type safety.
-
-```rust
-#[sqlitex("schema.sql")]
-// you dont have to create tables. Any read/write sql queries gets compile time guarantees.
-struct App { ... }
-```
-
-### 3. Live Database
-
-Point to an existing `.db` binary file. `sqlitex` inspects the live metadata to validate your queries.
-
-```rust
-#[sqlitex("production_snapshot.db")]
-struct App { ... }
-```
-
-## Type Mapping
-
-The tables covers the most common types which are used.
-
-| SQLite Type                  | Rust Type           |
-|-----------------------------|---------------------|
-| `TEXT`                      | `String` / `&str`   |
-| `INTEGER` / `INT`           | `i64`               |
-| `REAL` / `FLOAT` / `DOUBLE` / `NUMERIC` / `DECIMAL` | `f64`               |
-| `BOOLEAN` / `BOOL`          | `bool`              |
-| `BLOB`                      | `Vec<u8>` / `&[u8]` |
-| `NULL` (nullable columns)   | `Option<T>`         |
-
-
-
-## TODOS
-1. rn blob loads everything to memory. add streaming support for blob
-
-2. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field
-nutype/nnn support basic
-upsert, INSERT OR REPLACE INTO users (id, name) VALUES (?, ?)
-
-4. bulk insert
-5. begin immediate
-6. chrono/time/jiff or other datetime-based library support
-7. better egonomic for bulk operation? maybe.
-8. url crate?
-  1. it follows an opinionated API design
-  2. Doesn't support Batch Execution ergonomically. You would need to resort to `sql!()` or `sql_escape_hatch!()` macro
-
-show how blob is used in READEME
-//TODO sqlite3_busy_timeout does return an int. It is nearly a gurantee for this
-// function to never fail. but its still good to handle it. If it fails mean
-// the sql query is taking more than 5 second which means its inefficent lol
-hence give eoption to change the timeout
-make the readme shorter
-
-in case CREATE TABLE is done after a random query in sql_struct should i allow it? like scan whole struct first instead of top down? at least show a warning
-
-e.g. blob support to add later
-
-```rust
-use std::fs;
-use sqlitex::{Connection, sqlitex};
-
-#[sqlitex]
-struct AppDatabase {
-    init: sql!("
-        CREATE TABLE IF NOT EXISTS documents (
-            id INTEGER PRIMARY KEY NOT NULL,
-            name TEXT NOT NULL,
-            payload BLOB NOT NULL
-        )
-    "),
-    insert_doc: sql!("INSERT INTO documents (id, name, payload) VALUES (?, ?, ?)"),
-    get_doc: sql!("SELECT id, name, payload FROM documents WHERE id = ?"),
-
-
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = Connection::open("asd.db")?;
-    let mut db = AppDatabase::new(conn);
-    db.init()?;
-
-    // 1. Read the image file from disk into a Vec<u8>
-    let image_bytes = fs::read("error_1.png")?;
-    println!("Read image from disk: {} bytes", image_bytes.len());
-
-    // 2. Insert into the database (pass a reference to the Vec so it becomes &[u8])
-    db.insert_doc(2, "error_1.png", &image_bytes)?;
-    println!("Image successfully saved to SQLite!");
-
-    // 3. Retrieve the image back from the database
-    let results = db.get_doc(2)?;
-    let doc = results.first()?.unwrap();
-    println!("Retrieved document '{}' with {} bytes.", doc.name, doc.payload.len());
-
-    // 4. Write it back to the disk with a new name to verify!
-    fs::write("restored_error_1.png", &doc.payload)?;
-    println!("Image restored to disk as 'restored_error_1.png'. Open it to see!");
-
-    Ok(())
-}
-```
-strict table can break certain features like bool datatype

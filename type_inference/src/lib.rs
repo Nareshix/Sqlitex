@@ -6,7 +6,7 @@ use sqlparser::ast::{
 use sqlparser::{ast::Statement, dialect::GenericDialect, dialect::SQLiteDialect, parser::Parser};
 use std::ops::ControlFlow;
 use crate::expr::sqlite_datatype_to_base_type;
-use crate::table::{ColumnInfo, normalize_identifier, normalize_part};
+use crate::table::{ColumnInfo, normalize_identifier};
 pub mod binding_patterns;
 pub mod expr;
 pub mod select_patterns;

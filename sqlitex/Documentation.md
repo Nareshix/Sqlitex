@@ -44,23 +44,29 @@ cargo add sqlitex
 ```rust
 use sqlitex::{Connection, sqlitex};
 
+// Alternatively,
+//#[sqlitex("path/to/db.sql")] to point to a .sql file with create table statements.
+//#[sqlitex("path/to/existing.db")] to point to an existing database file.
 #[sqlitex]
 struct AppDatabase {
     // all create tables must be at the top before read/write logic in order to get compile time checks
+    // or else you will get compile-time errors.
+    // Alternatively, You could point to a .sql file or an existing db and skip the create table statements in the struct
 
     // you don't have to import sql! macro. sqlitex brings with it
     init: sql!("
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY NOT NULL,
             username TEXT NOT NULL,
-            is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)) -- sqlitex infers this as bool. more info below
+            is_active BOOL NOT NULL
         )
     "),
 
     // postgres `::` type casting is supported. Alternatively u can use `CAST AS` syntax
-    add_user: sql!("INSERT INTO users (id, username, is_active) VALUES (?::real, ?, ?)"),
+    add_user: sql!("INSERT INTO users (id, username, is_active) VALUES (?::REAL, ?, ?)"),
 
-    get_active_users: sql!("SELECT id::real, username, is_active as active FROM users WHERE is_active = ?"),
+    // or `id::REAL` instead of `CAST (id AS REAL)`
+    get_active_users: sql!("SELECT CAST (id AS REAL), username, is_active as active FROM users WHERE is_active = ?"),
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -238,57 +244,8 @@ Note: Both `sql!` and `sql_escape_hatch!` accept only a single SQL statement at 
 5. ### Transactions
 
 - Note: you cannot name a field called `transaction` in the struct since its a reserved method name. Failiure to do so will result in a compile time error.
+- TODO (link to the transaction example)
 
-  ```rust
-      use sqlitex::{Connection, sqlitex};
-
-      #[sqlitex]
-      struct DB {
-          // We add UNIQUE to trigger a real database error later
-          init: sql!(
-              "CREATE TABLE IF NOT EXISTS users
-                      (id INTEGER PRIMARY KEY NOT NULL,
-                      name TEXT UNIQUE NOT NULL)"
-          ),
-
-          add: sql!("INSERT INTO users (name) VALUES (?)"),
-
-          count: sql!("SELECT count(*) as count FROM users"),
-      }
-
-      fn main() -> Result<(), Box<dyn std::error::Error>> {
-          let conn = Connection::open_memory()?;
-          let mut db = DB::new(conn);
-          db.init()?;
-
-          // Successful Transaction (Batch Commit)
-          let results = db.transaction(|tx| {
-              tx.add("Alice")?;
-              tx.add("Bob")?;
-
-              let count = tx.count()?.all()?;
-
-              Ok(count) // if you are not returning anything, u should return it as `Ok(())`
-          })?;
-
-          println!("{:?}", results[0].count); // prints out '2'
-
-          // Failed Transaction (Automatic Rollback)
-          // We try to add Charlie, then add Alice again.
-          // Since 'Alice' exists, the second command fails, causing the WHOLE block to revert.
-          // If you are running this on ur computer, it is expected to see this in the terminal:
-          // "Error: WriteBinding(Step(SqliteFailure { code: 19, error_msg: "UNIQUE constraint failed: users.name" }))"
-          db.transaction(|tx| {
-              tx.add("Charlie")?; // 1. Writes successfully (pending)
-              tx.add("Alice")?; // 2. Fails (Duplicate) -> Triggers Rollback
-              Ok(())
-          })?;
-
-
-
-          Ok(())
-      }
-  ```
 
 ## Type Mapping
 
@@ -313,102 +270,10 @@ The tables covers the most common types which are used.
 
 - Dynamic runtime features happens fully at runtime. All the features are stated below in this code block.
 
-  ```rust
-
-  use sqlitex::Connection;
-
-  fn main() -> Result<(), Box<dyn std::error::Error>> {
-      let conn = Connection::open_memory()?;
-
-      // Use execute_runtime for write statements (CREATE, INSERT, UPDATE, DELETE, etc.)
-      conn.execute_runtime(
-          "CREATE TABLE products (
-              id INTEGER PRIMARY KEY,
-              name TEXT NOT NULL,
-              price REAL,
-              in_stock INTEGER
-          )",
-      )?;
-
-      // _rows_affected variable is the number of rows modified, which in this case is an insert of 3 rows
-      let _rows_affected = conn.execute_runtime(
-          "INSERT INTO products (name, price, in_stock) VALUES
-          ('Laptop', 999.99, 1),
-          ('Mouse', 25.50, 1),
-          ('Keyboard', 75.00, 0)",
-      )?;
-
-      // Use query_runtime for running SELECT statements
-      let results = conn.query_runtime("SELECT * FROM products")?;
-      println!("Headers: {:?}", results.column_names); // id, name, price, in_stock
-
-      // row_result is an iterator
-      for row_result in results {
-          let row = row_result?;
-          for value in row {
-              print!("{:?} ", value); // or u could do value.as_string(), value.as_f64(), value.as_i64(), etc. to convert the enum to specific type
-          }
-      }
-
-      // u can use helper functions like first() or all() to get a vector of rows.
-      let _first_row = conn
-          .query_runtime("SELECT name, price FROM products WHERE id = 1")?
-          .first()?; // or .all()? for all rows
-
-      Ok(())
-  }
-
-  ```
+TODO link to the runtime example
 
 ### Transactions at Runtime
-
-```rust
-use sqlitex::Connection;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = Connection::open_memory()?;
-
-    conn.execute_runtime("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT UNIQUE)")?;
-
-    // Successful Transaction
-    let user_count = conn.transaction(|tx| {
-        tx.execute_runtime("INSERT INTO users (name) VALUES ('Alice')")?;
-        tx.execute_runtime("INSERT INTO users (name) VALUES ('Bob')")?;
-
-        let row = tx
-            .query_runtime("SELECT COUNT(*) FROM users")?
-            .first()?
-            .unwrap();
-        Ok(row[0].as_i32()) // Return the count
-    })?;
-
-    println!("{}", user_count); // Prints 2
-
-    // 3. Failed Transaction (Automatic Rollback)
-    // We try to add Charlie, then Alice again (who already exists).
-    let result = conn.transaction(|tx| {
-        tx.execute_runtime("INSERT INTO users (name) VALUES ('Charlie')")?; // Succeeds
-        tx.execute_runtime("INSERT INTO users (name) VALUES ('Alice')")?; // Fails (UNIQUE constraint)
-        Ok(())
-    });
-
-    if let Err(e) = result {
-        println!("{}", e);
-    }
-
-    // Charlie should NOT exist in the DB because the transaction reverted.
-    let final_count = conn
-        .query_runtime("SELECT COUNT(*) FROM users")?
-        .first()?
-        .unwrap()[0]
-        .as_i32();
-
-    println!("Charlie not added. Total count: {}", final_count); // prints 2 since Charlie was not added.
-
-    Ok(())
-}
-
-```
+TODO link to the transaction_runtime example
 
 ## Notes
 
@@ -424,74 +289,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - In the extremely rare case of a False positives (valid SQL syntax **fails** or type inference **incorrectly fails**), you can fall back to the `sql_escape_hatch!` macro. Would appreciate it if you could open an issue as well.
 
-## TODOS
-
-1. rn blob loads everything to memory. add streaming support for blob
-
-2. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field
-   nutype/nnn support basic
-   upsert, INSERT OR REPLACE INTO users (id, name) VALUES (?, ?)
-
-3. bulk insert
-4. begin immediate
-5. chrono/time/jiff or other datetime-based library support
-6. better egonomic for bulk operation? maybe.
-7. url crate?
-8. it follows an opinionated API design
-9. Doesn't support Batch Execution ergonomically. You would need to resort to `sql!()` or `sql_escape_hatch!()` macro
-
-show how blob is used in READEME
-//TODO sqlite3_busy_timeout does return an int. It is nearly a gurantee for this
-// function to never fail. but its still good to handle it. If it fails mean
-// the sql query is taking more than 5 second which means its inefficent lol
-hence give eoption to change the timeout
-make the readme shorter
-
-in case CREATE TABLE is done after a random query in sql_struct should i allow it? like scan whole struct first instead of top down? at least show a warning
-
-e.g. blob support to add later
-
-```rust
-use std::fs;
-use sqlitex::{Connection, sqlitex};
-
-#[sqlitex]
-struct AppDatabase {
-    init: sql!("
-        CREATE TABLE IF NOT EXISTS documents (
-            id INTEGER PRIMARY KEY NOT NULL,
-            name TEXT NOT NULL,
-            payload BLOB NOT NULL
-        )
-    "),
-    insert_doc: sql!("INSERT INTO documents (id, name, payload) VALUES (?, ?, ?)"),
-    get_doc: sql!("SELECT id, name, payload FROM documents WHERE id = ?"),
-
-
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = Connection::open("asd.db")?;
-    let mut db = AppDatabase::new(conn);
-    db.init()?;
-
-    // 1. Read the image file from disk into a Vec<u8>
-    let image_bytes = fs::read("error_1.png")?;
-    println!("Read image from disk: {} bytes", image_bytes.len());
-
-    // 2. Insert into the database (pass a reference to the Vec so it becomes &[u8])
-    db.insert_doc(2, "error_1.png", &image_bytes)?;
-    println!("Image successfully saved to SQLite!");
-
-    // 3. Retrieve the image back from the database
-    let results = db.get_doc(2)?;
-    let doc = results.first()?.unwrap();
-    println!("Retrieved document '{}' with {} bytes.", doc.name, doc.payload.len());
-
-    // 4. Write it back to the disk with a new name to verify!
-    fs::write("restored_error_1.png", &doc.payload)?;
-    println!("Image restored to disk as 'restored_error_1.png'. Open it to see!");
-
-    Ok(())
-}
-```
