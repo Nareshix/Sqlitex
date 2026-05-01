@@ -487,7 +487,7 @@ pub fn evaluate_expr_type(
 
 
                 DataType::Blob(_) | DataType::Bytea => BaseType::Blob,
-                
+
                 DataType::Real
                 | DataType::Double(_)
                 | DataType::DoublePrecision
@@ -495,6 +495,7 @@ pub fn evaluate_expr_type(
                 | DataType::Decimal(_) //undocumented but works
                 | DataType::Float(_) => BaseType::Real,
 
+                DataType::Boolean | DataType::Bool => BaseType::Bool,
 
                 // TODO Numeric
 

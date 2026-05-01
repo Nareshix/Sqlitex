@@ -758,7 +758,7 @@ fn traverse_expr(
                     contains_placeholder: false,
                 }),
 
-                DataType::Boolean => Some(Type {
+                DataType::Boolean | DataType::Bool => Some(Type {
                     base_type: BaseType::Bool,
                     nullable,
                     contains_placeholder: false,
