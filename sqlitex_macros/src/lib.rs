@@ -9,7 +9,10 @@ use syn::{
     spanned::Spanned,
 };
 use type_inference::{
-    binding_patterns::get_type_of_binding_parameters, expr::BaseType, pg_cast_syntax_to_sqlite, rewrite_bool_columns, select_patterns::get_types_from_select, table::create_tables, validate_cast_types, validate_create_table_types, validate_insert_strict, validate_single_statement
+    binding_patterns::get_type_of_binding_parameters, expr::BaseType, pg_cast_syntax_to_sqlite,
+    rewrite_bool_columns, select_patterns::get_types_from_select, table::create_tables,
+    validate_cast_types, validate_create_table_types, validate_insert_strict,
+    validate_single_statement,
 };
 
 /// This nicely formats the sql string.
@@ -135,13 +138,23 @@ fn expand(
 
     if let Some(path) = db_path_lit {
         let db_path = path.value();
+
+        if db_path.ends_with(".sql")
+            && let Ok(content) = std::fs::read_to_string(&db_path)
+        {
+            validate_cast_types(&content)
+                .map_err(|msg| syn::Error::new(path.span(), format!("In {}: {}", db_path, msg)))?;
+
+            validate_create_table_types(&content)
+                .map_err(|msg| syn::Error::new(path.span(), format!("In {}: {}", db_path, msg)))?;
+        }
+
         let schemas = get_db_schema(&db_path).map_err(|err| {
-            syn::Error::new(
-                db_path_lit.span(),
-                format!("Failed to load DB schema: {}", err),
-            )
+            syn::Error::new(path.span(), format!("Failed to load DB schema: {}", err))
         })?;
         for schema in schemas {
+            validate_create_table_types(&schema)
+                .map_err(|msg| syn::Error::new(path.span(), format!("In {}: {}", db_path, msg)))?;
             create_tables(&schema, &mut all_tables);
         }
     }
@@ -181,8 +194,7 @@ fn expand(
         if let Some(sql_lit) = parse_sql_macro_type(&field.ty)? {
             let sql_query = pg_cast_syntax_to_sqlite(&sql_lit.value());
             let sql_query = rewrite_bool_columns(&sql_query);
-            validate_cast_types(&sql_query)
-                .map_err(|msg| syn::Error::new(sql_lit.span(), msg))?;
+            validate_cast_types(&sql_query).map_err(|msg| syn::Error::new(sql_lit.span(), msg))?;
 
             validate_create_table_types(&sql_query)
                 .map_err(|msg| syn::Error::new(sql_lit.span(), msg))?;
