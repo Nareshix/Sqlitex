@@ -122,7 +122,9 @@ fn convert_sqlite_to_rust_type(sql: String, nullable: bool, is_bool_context: boo
 
 pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
     let dialect = SQLiteDialect {};
-    let ast = Parser::parse_sql(&dialect, sql).unwrap();
+    let Ok(ast) = Parser::parse_sql(&dialect, sql) else {
+        return;
+    };
 
     for statement in ast {
         if let Statement::CreateTable(CreateTable {
@@ -147,10 +149,8 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
                     let mut is_default = false;
 
                     // check if type is strictly INTEGER (not INT)
-                    let is_strictly_integer = col
-                        .data_type
-                        .to_string()
-                        .eq_ignore_ascii_case("INTEGER");
+                    let is_strictly_integer =
+                        col.data_type.to_string().eq_ignore_ascii_case("INTEGER");
 
                     for option_def in &col.options {
                         match &option_def.option {
@@ -205,9 +205,13 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
         }
     }
 }
+
 #[allow(unused)]
 pub fn get_table_names(sql: &str) -> Vec<String> {
-    let statements = Parser::parse_sql(&SQLiteDialect {}, sql).unwrap();
+    let Ok(statements) = Parser::parse_sql(&SQLiteDialect {}, sql) else {
+        return vec![];
+    };
+
     let mut visited = vec![];
     let _ = visit_relations(&statements, |expr| {
         let name = expr

@@ -54,7 +54,17 @@ pub fn get_type_of_binding_parameters(
     sql: &str,
     all_tables: &HashMap<String, Vec<ColumnInfo>>,
 ) -> Result<Vec<Type>, InferenceError> {
-    let statement = &Parser::parse_sql(&SQLiteDialect {}, sql).unwrap()[0];
+    let ast = Parser::parse_sql(&SQLiteDialect {}, sql).map_err(|e| InferenceError {
+        start: Location { line: 1, column: 1 },
+        end: Location { line: 1, column: 1 },
+        message: format!("SQL syntax error: {}", e),
+    })?;
+
+    if ast.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let statement = &ast[0];
     let sql = pg_cast_syntax_to_sqlite(sql);
 
     let table_names = get_table_names(&sql);
@@ -408,16 +418,15 @@ fn traverse_expr(
                 && hint.base_type == BaseType::Bool
             {
                 match &val.value {
-                    sqlparser::ast::Value::Number(n, _)
-                        if n != "0" && n != "1" => {
-                            return Err(err_from_expr(
-                                expr,
-                                format!(
-                                    "Literal '{}' violates boolean check constraint (must be 0 or 1). Alternatively, use keywords TRUE or FALSE",
-                                    n
-                                ),
-                            ));
-                        }
+                    sqlparser::ast::Value::Number(n, _) if n != "0" && n != "1" => {
+                        return Err(err_from_expr(
+                            expr,
+                            format!(
+                                "Literal '{}' violates boolean check constraint (must be 0 or 1). Alternatively, use keywords TRUE or FALSE",
+                                n
+                            ),
+                        ));
+                    }
 
                     sqlparser::ast::Value::SingleQuotedString(s)
                     | sqlparser::ast::Value::DoubleQuotedString(s) => {
