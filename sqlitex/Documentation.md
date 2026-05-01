@@ -186,18 +186,17 @@ sql!("SELECT price::text FROM items")
 
 ## Important note on STRICT tables
 
-It is common advice to hear that we should create STRICT tables in sqlite. However, it is recommended not to use it with `sqlitex`
+It is a common advice to create STRICT tables in sqlite. However, it is recommended not to use it with `sqlitex`
 
 when using `sqlitex`, it **automatically** uses its own built-in "STRICT" table, which is more flexible and much more powerful than sqlite's native STRICT tables. It mostly follows [sqlite type affinity](https://www.sqlite.org/datatype3.html#affinity_name_examples) except for how `BOOLEAN`/`BOOL` is handled. It is shown in the table below
 
-| SQLite Type without STRICT TABLE                                                                          | Rust Type           |
-| --------------------------------------------------------------------------------------------------------- | ------------------- |
-| `TEXT` / `CHARACTER` / `VARCHAR` / `CHARVARYING` / `CHARACTERVARYING` / `NVARCHAR` / `CLOB`             | `String` / `&str`   |
+| SQLite Type without STRICT TABLE                                                                         | Rust Type           |
+| -------------------------------------------------------------------------------------------------------- | ------------------- |
+| `TEXT` / `CHARACTER` / `VARCHAR` / `CHARVARYING` / `CHARACTERVARYING` / `NVARCHAR` / `CLOB`              | `String` / `&str`   |
 | `INTEGER` / `INT` / `TINYINT` / `SMALLINT` / `MEDIUMINT` / `BIGINT` / `BIGINTUNSIGNED` / `INT2` / `INT8` | `i64`               |
 | `REAL` / `DOUBLE` / `DOUBLEPRECISION` / `FLOAT` / `NUMERIC` / `DECIMAL`                                  | `f64`               |
-| **`BOOLEAN`** / **`BOOL`**                                                                                        | `bool`              |
-| `BLOB` / `BYTEA`                                                                                          | `Vec<u8>` / `&[u8]` |
-
+| **`BOOLEAN`** / **`BOOL`**                                                                               | `bool`              |
+| `BLOB` / `BYTEA`                                                                                         | `Vec<u8>` / `&[u8]` |
 
 | SQLite Type with STRICT TABLE | Rust Type           |
 | ----------------------------- | ------------------- |
@@ -205,7 +204,7 @@ when using `sqlitex`, it **automatically** uses its own built-in "STRICT" table,
 | `REAL`                        | `f64`               |
 | `TEXT`                        | `String` / `&str`   |
 | `BLOB`                        | `Vec<u8>` / `&[u8]` |
-| `ANY`                         | `-`       |
+| `ANY`                         | `-`                 |
 
 As we can see, `sqlitex` built-in "STRICT" table gives us more flexible types like FLOAT and DECIMAL and, more powerfully, a Boolean datatype
 
@@ -216,8 +215,9 @@ Internally, creating table with `BOOLEAN` and `BOOL` data type aliases to `INTEG
 ### How to get boolean support for compile time checks without using `sqlitex`'s `bool` or `boolean` data type?
 
 If u prefer a sqlite-pure approach, make sure u add a check constraint for the column like either one of the following and sqlitex will automatically detect it as bool:
- 1. CHECK (col IN (0, 1))
- 2. CHECK (col = 0 OR col = 1)
+
+1.  CHECK (col IN (0, 1))
+2.  CHECK (col = 0 OR col = 1)
 
 It does not matter whether the table is created with STRICT or not. You can still get compile time checks and boolean support as long as you have either of the check constraint.
 
@@ -308,4 +308,3 @@ struct Logger {
 ### Strict INSERT Validation
 
 - Although standard SQL allows inserting any number of columns to a table, sqlitex checks INSERT statements at compile time. If you omit any column (except for `AUTOINCREMENT` and `DEFAULT`), code will fail to compile. This means you must either specify all columns explicitly, or use implicit insertion for all columns. This is done to prevent certain runtime errors such as `NOT NULL constraint failed` and more.
-

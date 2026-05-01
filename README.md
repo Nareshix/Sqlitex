@@ -1,4 +1,5 @@
 # Sqlitex
+
 Sqlitex is a sqlite library for rust with compile time guarantees. It also has additional features:
 
 - Ergonomic with excellent IDE support
@@ -6,7 +7,6 @@ Sqlitex is a sqlite library for rust with compile time guarantees. It also has a
 - Supports [BLOB](./examples/blob/) and [Transactions](./examples/transactions.rs)
 - compile time guarantees for complex sql queries such as, CTEs, Window functions, Datetime functions and more
 - allows fallback of [runtime features](./examples/runtime.rs) when needed
-
 
 # Overview
 
@@ -23,29 +23,24 @@ cargo add sqlitex
 ```
 
 ## Feature showcase
- 1. Auto generate method signatures with correct types and
-Hover over to see sql code
 
+1.  Auto generate method signatures with correct types and
+    Hover over to see sql code
 
-
-    ![usage](https://github.com/Nareshix/sqlitex/raw/main/amedia_for_readme/usage.gif)
+        ![usage](https://github.com/Nareshix/sqlitex/raw/main/amedia_for_readme/usage.gif)
 
 (Note: `LazyConnection` has been renamed to `Connection` in newer version. library name was previously called LazySql which has now been renamed to Sqlitex)
 
-
-
-
 2. Compile time errors with good error messages
 
-    ![error_1](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_1.png?raw=true)
+   ![error_1](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_1.png?raw=true)
 
-    ![error_2](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_2.png?raw=true)
+   ![error_2](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_2.png?raw=true)
 
-    ![error_3](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_3.png?raw=true)
-
-
+   ![error_3](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_3.png?raw=true)
 
 ## Quick Start
+
 ```rust
 use sqlitex::{Connection, sqlitex};
 
@@ -110,12 +105,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // prints out "0, Alice, true"
 }
 ```
+
 # Important note on STRICT tables
-It is common advice to hear that we should create STRICT tables in sqlite. However, it is recommended not to use it with `sqlitex`
+
+It is a common advice to create STRICT tables in sqlite. However, it is recommended not to use it with `sqlitex`
 
 creating STRICT tables in sqlite will make this library less powerful. STRICT table only allows `INT`, `INTEGER`, `REAL`, `TEXT`, `BLOB`, `ANY` datatypes.
 
 This library offers
+
 1. casting as bool
 2. creating tables with bool data type,
 3. having slightly more flexible data types (e.g. `REAL`, `NUMERIC`, `FLOAT` are all synonymous).
@@ -125,5 +123,7 @@ By enabling STRICT tables you will lose all of these features.
 [you can read it up more on here](./sqlitex/Documentation.md#a-note-on-strict-tables)
 or
 [if you are only interested in having compile time checks for boolean using pure sqlite approach](./sqlitex/Documentation.md#how-to-get-boolean-support-for-compile-time-checks-without-using-sqlitexs-bool-or-boolean-data-type)
+
 # Additional Links
+
 For more examples and features, look at the [examples](./examples/) folder and read the [documentations](https://docs.rs/sqlitex/latest/sqlitex/).
