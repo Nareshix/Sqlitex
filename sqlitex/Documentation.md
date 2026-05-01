@@ -1,13 +1,10 @@
+testing is needed since i renamed everything. lazysql still works and the prev docs is in the crates.io page for now.
 # sqlitex
 
 - sqlitex is a sqlite library for rust
 - Has compile time guarantees
 - Ergonomic
 - Fast. Automatically caches and reuses prepared statements for you
-- Some downsides that may or may not be fixed in future
-  1. it follows an opinionated API design
-  2. Doesn't support BLOBS
-  3. Doesn't support Batch Execution ergonomically. You would need to resort to `sql!()` or `sql_runtime!()` macro
 
 # Overview
 
@@ -39,19 +36,10 @@
 
 ## Installation
 
-Run the following Cargo command in your project directory:
-
 ```bash
 cargo add sqlitex
 ```
 
-OR
-
-Go to [sqlitex's crates.io](https://crates.io/crates/sqlitex) to get the latest version. Add that to following line to your Cargo.toml:
-
-```toml
-sqlitex = "*" # Replace the "*" with the latest version
-```
 
 ## Quick Start
 
@@ -67,11 +55,11 @@ struct AppDatabase {
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY NOT NULL,
             username TEXT NOT NULL,
-            is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)) -- the library infers this as bool. more info below
+            is_active INTEGER NOT NULL CHECK (is_active IN (0, 1)) -- sqlitex infers this as bool. more info below
         )
     "),
 
-    // postgres `::` type casting is supported. Alternatively u can use CAST AS syntax
+    // postgres `::` type casting is supported. Alternatively u can use `CAST AS` syntax
     add_user: sql!("INSERT INTO users (id, username, is_active) VALUES (?::real, ?, ?)"),
 
     get_active_users: sql!("SELECT id::real, username, is_active as active FROM users WHERE is_active = ?"),
@@ -97,7 +85,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for user in active_users {
         // u can access the fields specifically if you want
-        // Respects Aliases (is_active -> active)
+        // Respects aliases (is_active -> active)
         let user = user?;
         println!("{}, {}, {}", user.active, user.username, user.id); // note user.id is float as we type casted it in the sql stmt
     }
@@ -117,9 +105,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - Since SQLite defaults to nullable columns, the type inference system defaults to Option<T>. To use concrete types (e.g., String instead of Option<String>), explicitly add **NOT NULL** to your table columns
 
-- You cannot name a field called `transaction` in the struct since its a reserved method name for transactions. Failiure to do so will result in a compile time error.
 
-- There will be rare scenarios when a type is impossible to infer. `sqlitex` will tell you specifically which binding parameter or expression cannot be inferred and will suggest using type casting via PostgreSQL's `::` operator or standard SQL's `CAST AS`. Note that you can't type cast as `boolean` for now.
 
   For instance,
 
@@ -159,7 +145,6 @@ Point to an existing `.db` binary file. `sqlitex` inspects the live metadata to 
 struct App { ... }
 ```
 
-Note: for method 2 and 3, you can technically CREATE TABLE as well but to ensure that they are taken into consideration for compile time check, add them at the top of your struct
 
 ## Features
 
@@ -448,10 +433,70 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 - This is a limitation of sqlite since it doesn't natively have `boolean` type. I may find some workaround in the future but it's not guaranteed. For now if you want to type cast as bool, u have to type cast it as an `integer` and add either 1 (`TRUE`) or 0 (`False`)
 
 ## TODOS
+1. rn blob loads everything to memory. add streaming support for blob
 
-1. [upsert](https://www.cockroachlabs.com/blog/sql-upsert/)
 2. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field
-3. cant cast as bool
-4. BLOBS
-5. bulk insert
-6. begin immediate
+
+4. bulk insert
+5. begin immediate
+6. chrono/time/jiff or other datetime-based library support
+7. better egonomic for bulk operation? maybe.
+8. url crate?
+  1. it follows an opinionated API design
+  2. Doesn't support Batch Execution ergonomically. You would need to resort to `sql!()` or `sql_runtime!()` macro
+
+show how blob is used in READEME
+//TODO sqlite3_busy_timeout does return an int. It is nearly a gurantee for this
+// function to never fail. but its still good to handle it. If it fails mean
+// the sql query is taking more than 5 second which means its inefficent lol
+hence give eoption to change the timeout
+make the readme shorter
+
+in case CREATE TABLE is done after a random query in sql_struct should i allow it? like scan whole struct first instead of top down? at least show a warning
+
+e.g. blob support to add later
+
+```rust
+use std::fs;
+use sqlitex::{Connection, sqlitex};
+
+#[sqlitex]
+struct AppDatabase {
+    init: sql!("
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            payload BLOB NOT NULL
+        )
+    "),
+    insert_doc: sql!("INSERT INTO documents (id, name, payload) VALUES (?, ?, ?)"),
+    get_doc: sql!("SELECT id, name, payload FROM documents WHERE id = ?"),
+
+
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let conn = Connection::open("asd.db")?;
+    let mut db = AppDatabase::new(conn);
+    db.init()?;
+
+    // 1. Read the image file from disk into a Vec<u8>
+    let image_bytes = fs::read("error_1.png")?;
+    println!("Read image from disk: {} bytes", image_bytes.len());
+
+    // 2. Insert into the database (pass a reference to the Vec so it becomes &[u8])
+    db.insert_doc(2, "error_1.png", &image_bytes)?;
+    println!("Image successfully saved to SQLite!");
+
+    // 3. Retrieve the image back from the database
+    let results = db.get_doc(2)?;
+    let doc = results.first()?.unwrap();
+    println!("Retrieved document '{}' with {} bytes.", doc.name, doc.payload.len());
+
+    // 4. Write it back to the disk with a new name to verify!
+    fs::write("restored_error_1.png", &doc.payload)?;
+    println!("Image restored to disk as 'restored_error_1.png'. Open it to see!");
+
+    Ok(())
+}
+```
