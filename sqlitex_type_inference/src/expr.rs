@@ -500,13 +500,37 @@ pub fn evaluate_expr_type(
 
             // http://www.sqlite.org/datatype3.html#affinity_name_examples
             let target_base_type = sqlite_datatype_to_base_type(data_type)?;
+
+            // Always allow placeholders (?) to be cast to anything
+            // and restrict the type casts
+            let is_allowed = input_type.base_type == BaseType::PlaceHolder
+                || match (input_type.base_type, target_base_type) {
+                    (BaseType::Integer, BaseType::Real) => true,
+                    (BaseType::Real, BaseType::Integer) => true,
+                    (BaseType::Integer, BaseType::Text) => true,
+                    (BaseType::Real, BaseType::Text) => true,
+                    (BaseType::Bool, BaseType::Integer) => true,
+                    (BaseType::Bool, BaseType::Real) => true,
+
+                    // allow identity casts (e.g., casting an Int to an Int)
+                    (src, dst) if src == dst => true,
+
+                    _ => false,
+                };
+
+            if !is_allowed {
+                return Err(format!(
+                    "Unsupported type cast: cannot cast from {:?} to {:?}",
+                    input_type.base_type, target_base_type
+                ));
+            }
+
             Ok(Type {
                 base_type: target_base_type,
                 nullable: input_type.nullable,
                 contains_placeholder: input_type.contains_placeholder,
             })
         }
-
         // some expressions have their own enum which couldve been inside the Function enum but isnt.
         // we have to handle those cases seperately. https://docs.rs/sqlparser/latest/sqlparser/ast/enum.Expr.html, sqlparser-0.59
 

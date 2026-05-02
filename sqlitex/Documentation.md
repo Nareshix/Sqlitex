@@ -18,8 +18,9 @@
   - [How to use `sql_escape_hatch!`](#how-to-use-sql_escape_hatch)
     - [SELECT statements](#a-select-statements)
     - [No Return Type](#b-no-return-type)
-- [Miscs](#miscs)
-  - [Strict INSERT Validation](#strict-insert-validation)
+
+- [Type casting](#type-casting)
+- [Strict INSERT Validation](#strict-insert-validation)
 
 ## Installation
 
@@ -303,8 +304,16 @@ struct Logger {
 // can continue to use it normally.
 ```
 
-## Miscs
+## Type casting
+only these are supported for now to avoid unexpected behaviour.
 
-### Strict INSERT Validation
+    Integer -> Real
+    Real -> Integer (note it gets truncated)
+    Integer -> Text
+    Real -> Text
+    Bool -> Integer (true -> 1, false -> 0)
+    Bool -> Real (true -> 1.0, false -> 0.0)
+
+## Strict INSERT Validation
 
 - Although standard SQL allows inserting any number of columns to a table, sqlitex checks INSERT statements at compile time. If you omit any column (except for `AUTOINCREMENT` and `DEFAULT`), code will fail to compile. This means you must either specify all columns explicitly, or use implicit insertion for all columns. This is done to prevent certain runtime errors such as `NOT NULL constraint failed` and more.
