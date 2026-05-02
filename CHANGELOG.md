@@ -26,9 +26,7 @@ Only the following casts are allowed:
 
 ### Migration
 
-In previous versions, type casting was flexible. Any type could be casted to any other type. Upgrading to 0.2.0 introduces stricter rules that may break existing code.
-
-However, the changes are straightforward as the compiler will flag every affected line, making the fixes straightforward to apply.
+In previous versions, type casting was flexible. Any type could be casted to any other type. Upgrading to 0.2.0 introduces stricter rules that may break existing code. However, the changes are straightforward as the compiler will flag every affected line, making the fixes straightforward to apply.
 
 ## [0.1.1 - 0.1.10] - 2026-05-02
 Docuemntation updates and improvements. No code changes.
