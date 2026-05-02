@@ -37,3 +37,5 @@ try to keep packages up to date. theresa  github bot that notifies u for breking
 add changelog and update git tags even if its jsut documentation change.
 
 cargod deny check. cargo outdated, cargo update/upgrade .github depandabot alternative or renovate?
+`
+have mdbook and host the docs rather than relying on docs.rs page.
