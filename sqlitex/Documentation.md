@@ -147,7 +147,7 @@ Note: Both `sql!` and `sql_escape_hatch!` accept only a single SQL statement at 
 
    **Always prefer** to use this. It automatically:
    1. **Infers Inputs:** Maps `?` to Rust types (`i64`, `f64`, `String`, `bool`).
-   2. **Generates Outputs:** For `SELECT` queries, creates a struct named after the field
+   2. **Generates Outputs:** For `SELECT` / `RETURNING` queries, creates a struct named after the field
 
 2. ### `sql_escape_hatch!` Macro
    You will almost never need to use this in practice. If you are curious on wht it does, read [on this section below](#when-to-use-sql_escape_hatch)
@@ -262,7 +262,7 @@ If you do somehow encounter this _false positive_, I would really appreicate it 
 ### How to use `sql_escape_hatch!`
 
 #### a. `SELECT` statements
-
+Note: This also works for `INSERT... RETURNING`
 You can map a query result to any struct by deriving `SqlMapping`.
 
 `SqlMapping` maps columns by **index**, not by name. The order of fields in your struct **must** match the order of columns in your `SELECT` statement exactly.
