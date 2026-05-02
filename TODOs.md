@@ -39,3 +39,4 @@ add changelog and update git tags even if its jsut documentation change.
 cargod deny check. cargo outdated, cargo update/upgrade .github depandabot alternative or renovate?
 `
 have mdbook and host the docs rather than relying on docs.rs page.
+orrr, u can rewrite ur python ssg in rust and make it more smoother. :D
