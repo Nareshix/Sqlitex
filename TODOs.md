@@ -2,6 +2,7 @@
 
 # Some notes
 
+fts5 hard to do compile time. just suse runtime features. might add an eaxmple in future.
 technically faster than rusqlite. AUto cache stmts and pragma settings aside,  sqlitex has a faster archtiecture than rusqlite.  but it honestly doesnt matter becasuse in real world, there isnt any noticable difference. should i say it in readme? main highlight is the ergonomics.
 
 
@@ -41,3 +42,10 @@ cargod deny check. cargo outdated, cargo update/upgrade .github depandabot alter
 `
 have mdbook and host the docs rather than relying on docs.rs page.
 orrr, u can rewrite ur python ssg in rust and make it more smoother. :D
+
+# Others
+sqlite optimize
+VACCUm
+https://www.sqlite.org/optoverview.html
+https://sqlite.org/lang_vacuum.html
+
