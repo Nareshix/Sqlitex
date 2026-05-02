@@ -38,7 +38,7 @@ cargo add sqlitex
    ![error_3](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_3.png?raw=true)
 
 ## Quick Start
-For more examples and features, look at the [examples](./examples/) folder and read the [documentations](https://docs.rs/sqlitex/latest/sqlitex/).
+For more examples and features, look at the [examples](./examples/) folder or read the [documentations](https://docs.rs/sqlitex/latest/sqlitex/).
 
 
 ```rust
