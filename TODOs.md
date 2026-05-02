@@ -1,6 +1,6 @@
 ## TODOS
 
-1. connection via sql file is does not play well with rust analyser. need to constantly restart server to show live changes. have not tested how it looks like in other editor. only tested in  vscode so far. might sound overkill and proabbly worng but can we try to make use of diff threads. or if tehresa  ncier way to refresh rust analsyer without full restart would be nice. 
+1. connection via sql file is does not play well with rust analyser. need to constantly restart server to show live changes. have not tested how it looks like in other editor. only tested in  vscode so far. might sound overkill and proabbly worng but can we try to make use of diff threads. or if tehresa  ncier way to refresh rust analsyer without full restart would be nice.
 2. likewise for hover over funciton, need to test whether it works on other editors
 4. casting is abit too flexible. it dont make sense for a string to be type casted as bool. and rn for some reason one would expect it ot betrue since theres smth but its giving us fasle. so wrong ans at that too. easier to disable
 
@@ -32,3 +32,5 @@ add contributing.md cuz u seem to forget wht u write lol then spenda lot of time
 try to keep packages up to date. theresa  github bot that notifies u for breking semver. try to often update for minor patches. does cargo update do this? automate it
 
 add changelog and update git tags even if its jsut documentation change.
+
+cargo outdated, cargo update/upgrade .github depandabot alternative or renovate?
