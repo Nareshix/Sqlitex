@@ -5,7 +5,8 @@ headers of
 
 `Added`, `Migration`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
-
+## Ongoing
+Fixed broken link in documentation
 ## [0.2.1] - 2026-06-01
 Documentation formatting
 

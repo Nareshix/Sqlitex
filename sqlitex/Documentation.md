@@ -30,7 +30,7 @@ cargo add sqlitex
 
 ## Quick Start
 
-For more examples and features, look at the [examples](./examples/) folder and read the [documentations](https://docs.rs/sqlitex/latest/sqlitex/).
+For more examples, look at the [examples folder in github](https://github.com/Nareshix/sqlitex/tree/main/examples)
 
 ```rust
 use sqlitex::{Connection, sqlitex};
