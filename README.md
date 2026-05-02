@@ -3,10 +3,9 @@
 Sqlitex is a sqlite library for rust with compile time guarantees. It also has additional features:
 
 - Ergonomic with excellent IDE support
-- Fast. Automatically caches and reuses prepared statements for you
-- Supports [BLOB](./examples/blob/) and [Transactions](./examples/transactions.rs)
-- compile time guarantees for complex sql queries such as, CTEs, Window functions, Datetime functions and more
-- allows fallback of [runtime features](./examples/runtime.rs) when needed
+- Very Fast
+  - Automatically caches and reuses prepared statements for you
+  - Automatically applies optimal PRAGMA settings for performance and reliability (e.g., WAL, synchronous=NORMAL and more).
 
 # Overview
 
@@ -76,6 +75,9 @@ struct AppDatabase {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // `sqlitex` automatically uses the best sqlite setting for max performance and reliability (e.g. wal mode, synchronous=normal and more)
+    // when opening a connection
+
     // or Connection::open("path/to/sql.db")  note that it lazily creates one if doesnt exist
     let conn = Connection::open_memory()?;
 

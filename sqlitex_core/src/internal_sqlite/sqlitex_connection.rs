@@ -55,12 +55,20 @@ impl Connection {
             unsafe { close_db(db) };
             Err(SqliteOpenErrors::ConnectionAllocationFailed)
         } else if code == SQLITE_OK {
-            //TODO sqlite3_busy_timeout does return an int. It is nearly a gurantee for this
-            // function to never fail. but its still good to handle it. If it fails mean
-            // the sql query is taking more than 5 second which means its inefficent lol
+            unsafe {
+                // PRAGMA busy_timeout = 5000;
+                sqlite3_busy_timeout(db, 5000);
 
-            unsafe { sqlite3_busy_timeout(db, 5000) };
-            Ok(Arc::new(Self { db }))
+                let fk = CString::new("PRAGMA foreign_keys = ON;").unwrap();
+                sqlite3_exec(db, fk.as_ptr(), None, ptr::null_mut(), ptr::null_mut());
+
+                let wal = CString::new("PRAGMA journal_mode = WAL;").unwrap();
+                sqlite3_exec(db, wal.as_ptr(), None, ptr::null_mut(), ptr::null_mut());
+
+                let sync = CString::new("PRAGMA synchronous = NORMAL;").unwrap();
+                sqlite3_exec(db, sync.as_ptr(), None, ptr::null_mut(), ptr::null_mut());
+            };
+            Ok(Arc::new(Self { db }))   
         } else {
             let (code, error_msg) = unsafe { get_sqlite_failiure(db) };
             unsafe { close_db(db) };

@@ -20,6 +20,7 @@
     - [No Return Type](#b-no-return-type)
 
 - [Type casting](#type-casting)
+- [Default PRAGMA Settings](#default-pragma-settings)
 - [Strict INSERT Validation](#strict-insert-validation)
 
 ## Installation
@@ -67,6 +68,9 @@ struct AppDatabase {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // `sqlitex` automatically uses the best sqlite setting for max performance and reliability (e.g. wal mode, synchronous=normal and more)
+    // when opening a connection
+
     // or Connection::open("path/to/sql.db")  note that it lazily creates one if doesnt exist
     let conn = Connection::open_memory()?;
 
@@ -321,6 +325,17 @@ only these are supported for now to avoid unexpected behaviour.
     Real -> Text
     Bool -> Integer (true -> 1, false -> 0)
     Bool -> Real (true -> 1.0, false -> 0.0)
+
+## Default PRAGMA Settings.
+The default settings are
+
+```sql
+PRAGMA busy_timeout = 5000;
+PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
+```
+To override these settings or add more PRAGMA statements, u can use the `execute_runtime()` . They are simple enough that it doesn't warrant placing them in a `sql!()` macro for compile time checks, although nothing is stopping u from doing that
 
 ## Strict INSERT Validation
 

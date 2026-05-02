@@ -32,6 +32,9 @@ struct AppDatabase {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // `sqlitex` automatically uses the best sqlite setting for max performance and reliability (e.g. wal mode, synchronous=normal and more)
+    // when opening a connection
+
     // or Connection::open("path/to/sql.db")  note that it lazily creates one if doesnt exist
     let conn = Connection::open_memory()?;
 

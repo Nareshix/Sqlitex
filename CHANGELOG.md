@@ -6,7 +6,16 @@ headers of
 `Added`, `Migration`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## Ongoing
-Fixed broken link in documentation
+The default PRAGMA settings when using the library are
+
+```sql
+PRAGMA busy_timeout = 5000;
+PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = NORMAL;
+```
+This gives best performance and high relibaility
+
 ## [0.2.1] - 2026-06-01
 Documentation formatting
 
