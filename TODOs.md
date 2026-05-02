@@ -9,21 +9,19 @@ To allow CREATE TABLE stmts anywhere within the macro, we can scan all the creat
 
 
 # Feature addition (subjected to confirmation)
+0. fts5 support
 1. for hover over funciton, need to test whether it works on other editors. works great on vscode
 
+2. rn blob loads everything to memory. maybe add streaming support for blob?
 
-2. nutype support? but complex . realistically might not ever implement it but just leave it here as a food for thought.
+3. check_constraint field in SELECT is ignored for now.
 
-3. rn blob loads everything to memory. maybe add streaming support for blob?
+4. upsert - INSERT OR REPLACE INTO users (id, name) VALUES (?, ?)
 
-4. check_constraint field in SELECT is ignored for now.
-
-5. upsert - INSERT OR REPLACE INTO users (id, name) VALUES (?, ?)
-
-1. bulk insert
-2. begin immediate
-3. chrono/time/jiff or other datetime-based library support
-4. better egonomic for bulk operation? maybe.
+5. bulk insert
+6. begin immediate
+7. chrono/time/jiff or other datetime-based library support
+8. better egonomic for bulk operation? maybe.
 5. url crate?
 6. it follows an opinionated API design
 7. Doesn't support Batch Execution ergonomically. You would need to resort to `sql!()` or `sql_escape_hatch!()` macro
