@@ -30,3 +30,5 @@ sqlitex_type_inference crate needs some refactoring as the codebase is q messy
 add contributing.md cuz u seem to forget wht u write lol then spenda lot of time looking though code to rmb wht u did. gonna make same mistake again rn :p
 
 try to keep packages up to date. theresa  github bot that notifies u for breking semver. try to often update for minor patches. does cargo update do this? automate it
+
+add changelog and update git tags even if its jsut documentation change.
