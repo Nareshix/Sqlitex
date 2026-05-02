@@ -1,12 +1,15 @@
 ## TODOS
 
-1. connection via sql file is does not play well with rust analyser. need to constantly restart server to show live changes. have not tested how it looks like in other editor. only tested in  vscode so far. might sound overkill and proabbly worng but can we try to make use of diff threads. or if tehresa  ncier way to refresh rust analsyer without full restart would be nice.
-2. likewise for hover over funciton, need to test whether it works on other editors
-4. casting is abit too flexible. it dont make sense for a string to be type casted as bool. and rn for some reason one would expect it ot betrue since theres smth but its giving us fasle. so wrong ans at that too. easier to disable
+auto enable wal and toher common recommendations? otehr than strict table
 
-5. rn blob loads everything to memory. maybe add streaming support for blob?
+1. likewise for hover over funciton, need to test whether it works on other editors
 
-6. check_constarint field in SELECT is ignored for now. maybe in future will make use of this field via nutype/nnn
+
+if nutype is supported, certain features like casting from int to bool is possible as we can define the constaraint to be in eitehr 0 or 1
+
+3. rn blob loads everything to memory. maybe add streaming support for blob?
+
+4. check_constraint field in SELECT is ignored for now. maybe in future will make use of this field via nutype/nnn
 
 upsert - INSERT OR REPLACE INTO users (id, name) VALUES (?, ?)
 
