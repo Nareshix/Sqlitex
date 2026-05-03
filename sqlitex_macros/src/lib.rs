@@ -516,9 +516,24 @@ fn expand(
                     (quote! { (#(#many_owned_types),*) }, many_bind_calls)
                 };
 
-                let many_doc_header = format!(
-                    "Same as `{}` but you can write multiple rows within a single transaction by passing a list. If you need more precise batching, use `transactions`",
-                    ident
+                let many_doc_header: String = format!(
+                    r#"This is a batch operation version of [`{}`].
+Prefer this when inserting, updating, or deleting multiple rows at once for better performance.
+
+This operation is atomic and if you need more precise control over batching, use [`transaction`].
+
+# Example
+
+````rust
+let bulk = [
+    (0.0, "Alice".to_string(), true),
+    (1.0, "Bob".to_string(), false),
+    (2.0, "Charlie".to_string(), true),
+];
+
+db.{}_many(&bulk)?;
+```"#,
+                    ident, ident
                 );
 
                 generated_methods.push(quote! {
