@@ -22,11 +22,22 @@ To allow CREATE TABLE stmts anywhere within the macro, we can scan all the creat
 1. for hover over funciton, need to test whether it works on other editors. works great on vscode
 
 2. rn blob loads everything to memory. maybe add streaming support for blob?
-3. add a lint or smth that says strict table avoid using bool for compatibilit reason, tho it will work. can i add that somewhere? or can i straight up trhow an error. i wanna do either but wht blcok of code to hcange and where
+
+3. https://github.com/rust-lang/rust/issues/54140, suggestions can be better wit hthis api rather than saying it in error
 
 
 
 
+sql file and db file is read from Cargo.toml (the root of your project)
+
+docuemtn sql_runtime_exec can be used for chained statements
+
+transaction when hover ver should say wht it does with an example
+    // pub fn execute_script_runtime(&self,) TODO
+
+
+test out how good the other 2 connection methods are.
+generated method of init and transaction shoudl be more detailed, init should say panic if create table ecist. or smth
 # Feature addition (subjected to confirmation)
 
 1. bulk insert
