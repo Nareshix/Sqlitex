@@ -1,6 +1,6 @@
 # Sqlitex
 
-Sqlitex is a sqlite library for rust. It offers
+Sqlitex is a sqlite library for rust which aims to be simple and powerful. It offers
 
 - Compile time guarantees
 - Ergonomic with excellent IDE support

@@ -1,5 +1,5 @@
 # sqlitex
-sqlitex is an ergonomic sqlite library for rust. Feature showcase can be found in the [github repo](https://github.com/Nareshix/sqlitex)
+sqlitex is an ergonomic sqlite library for rust with compile time guarantees. Feature showcase and comparison between diff libraries can be found in the [github repo](https://github.com/Nareshix/sqlitex)
 
 - [Quickstart](#Qucikstart)
 - [Connection methods](#connection-methods)
@@ -212,7 +212,7 @@ fn foo{
         // i.total and i.status is accessible
     }
 }
-```
+````
 
 ##### b. No Return Type
 
