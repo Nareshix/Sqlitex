@@ -94,6 +94,7 @@ impl Connection {
                 // PRAGMA busy_timeout = 5000;
                 sqlite3_busy_timeout(db, 5000);
 
+                // unwrap is fine here as its guaranteed to be successful
                 let fk = CString::new("PRAGMA foreign_keys = ON;").unwrap();
                 sqlite3_exec(db, fk.as_ptr(), None, ptr::null_mut(), ptr::null_mut());
 
