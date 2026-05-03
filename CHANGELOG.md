@@ -9,7 +9,7 @@ headers of
 
 ### Added
 - compile time checks for virtual tables are not supported. Added this specific error for better clarity.
-
+- added `execute_many_runtime()` where we can run multiple chained sql statements (via `;`) at runtime.
 ### Fixed
 - `CREATE TABLE` detection is now more robust by using AST parsing instead of string matching.
 
