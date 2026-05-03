@@ -34,6 +34,7 @@ TODOs document the added
 
 - unify type mapping and remove redundant code
 - Removed `check_constraint` field in `ColumnInfo` struct as it is no longer being used
+- removed `exec` fn and replaced all macro genreation which dependent on it with `execute_batch` 
 
 ## [0.2.2] - 2026-05-03
 

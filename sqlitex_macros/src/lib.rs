@@ -161,12 +161,15 @@ fn expand(
                 .and_then(|f| f.to_str())
                 .unwrap_or(&db_path);
 
-            let doc_msg = format!("Executes all SQL statements defined in the external `{}` file", filename);
+            let doc_msg = format!(
+                "Executes all SQL statements defined in the external `{}` file",
+                filename
+            );
 
             schema_init_method = quote! {
                 #[doc = #doc_msg]
                 pub fn init(&self) -> Result<(), sqlitex::errors::SqliteFailure> {
-                    self.__db.exec(include_str!(#path))
+                    self.__db.execute_batch(include_str!(#path))
                 }
             };
         }
@@ -218,7 +221,10 @@ fn expand(
         // }
 
         // `init` method is reserved when pointing to an external sql file
-        if ident == "init" && db_path_lit.is_some() && db_path_lit.unwrap().value().ends_with(".sql") {
+        if ident == "init"
+            && db_path_lit.is_some()
+            && db_path_lit.unwrap().value().ends_with(".sql")
+        {
             return Err(syn::Error::new(
                 ident.span(),
                 "`init` is a reserved keyword when pointing to an external .sql file. Rename this field to something else.",
@@ -476,7 +482,7 @@ fn expand(
 
                     many_bind_calls.push(quote! {
         if let Err(__e) = preparred_statement.bind_parameter(#bind_index, #bind_expr) {
-            let _ = self.__db.exec("ROLLBACK");
+            let _ = self.__db.execute_batch("ROLLBACK");
             return Err(sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Bind(__e)));
         }
     });
@@ -500,7 +506,7 @@ fn expand(
 
                     let single_call = quote! {
                         if let Err(__e) = preparred_statement.bind_parameter(1, #single_bind_expr) {
-                            let _ = self.__db.exec("ROLLBACK");
+                            let _ = self.__db.execute_batch("ROLLBACK");
                             return Err(sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Bind(__e)));
                         }
                     };
@@ -510,7 +516,10 @@ fn expand(
                     (quote! { (#(#many_owned_types),*) }, many_bind_calls)
                 };
 
-                let many_doc_header = format!("Same as `{}` but you can write multiple rows within a single transaction by passing a list. If you need more precise batching, use `transactions`", ident);
+                let many_doc_header = format!(
+                    "Same as `{}` but you can write multiple rows within a single transaction by passing a list. If you need more precise batching, use `transactions`",
+                    ident
+                );
 
                 generated_methods.push(quote! {
     #(#field_attrs)*
@@ -531,7 +540,7 @@ fn expand(
             }
         }
 
-        self.__db.exec("BEGIN IMMEDIATE").map_err(sqlitex::errors::Error::from)?;
+        self.__db.execute_batch("BEGIN IMMEDIATE").map_err(sqlitex::errors::Error::from)?;
 
         for item in items {
             let mut preparred_statement = sqlitex::internal_sqlite::preparred_statement::PreparredStmt {
@@ -542,13 +551,13 @@ fn expand(
             #(#final_many_bind_calls)*
 
             if let Err(__e) = preparred_statement.step() {
-                let _ = self.__db.exec("ROLLBACK");
+                let _ = self.__db.execute_batch("ROLLBACK");
                 return Err(sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Step(__e)));
             }
         }
 
-        if let Err(__e) = self.__db.exec("COMMIT") {
-            let _ = self.__db.exec("ROLLBACK");
+        if let Err(__e) = self.__db.execute_batch("COMMIT") {
+            let _ = self.__db.execute_batch("ROLLBACK");
             return Err(sqlitex::errors::Error::from(__e));
         }
 
@@ -893,21 +902,21 @@ db.transaction(|tx| {
     where
         F: FnOnce(&mut Self) -> Result<T, sqlitex::errors::Error>,
     {
-        self.__db.exec("BEGIN IMMEDIATE")
+        self.__db.execute_batch("BEGIN IMMEDIATE")
             .map_err(sqlitex::errors::Error::from)?;
 
         let result = f(self);
 
         match result {
             Ok(val) => {
-                if let Err(e) = self.__db.exec("COMMIT") {
+                if let Err(e) = self.__db.execute_batch("COMMIT") {
                     return Err(sqlitex::errors::Error::from(e));
                 }
                 Ok(val)
             }
             Err(e) => {
                 // Attempt rollback, ignoring failure since we are already erroring
-                let _ = self.__db.exec("ROLLBACK");
+                let _ = self.__db.execute_batch("ROLLBACK");
                 Err(e)
             }
         }
@@ -917,21 +926,21 @@ db.transaction(|tx| {
     // where
     //     F: FnOnce(&mut Self) -> Result<T, sqlitex::errors::Error>,
     // {
-    //     self.__db.exec("BEGIN IMMEDIATE")
+    //     self.__db.execute_batch("BEGIN IMMEDIATE")
     //         .map_err(sqlitex::errors::Error::from)?;
 
     //     let result = f(self);
 
     //     match result {
     //         Ok(val) => {
-    //             if let Err(e) = self.__db.exec("COMMIT") {
+    //             if let Err(e) = self.__db.execute_batch("COMMIT") {
     //                 return Err(sqlitex::errors::Error::from(e));
     //             }
     //             Ok(val)
     //         }
     //         Err(e) => {
     //             // Attempt rollback, ignoring failure since we are already erroring
-    //             let _ = self.__db.exec("ROLLBACK");
+    //             let _ = self.__db.execute_batch("ROLLBACK");
     //             Err(e)
     //         }
     //     }

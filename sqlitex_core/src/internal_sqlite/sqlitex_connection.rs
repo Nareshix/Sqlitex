@@ -132,9 +132,7 @@ impl Connection {
     ///     SELECT * FROM users;
     /// ")?;
     /// ```
-    // TODO Do not delete this function for now. many macros depend on this function. eventually delte it as it is the same as as executre_batch_runtime
-    #[deprecated(since = "0.2.3", note = "Use `execute_script` instead")]
-    pub fn exec(&self, sql: &str) -> Result<(), SqliteFailure> {
+    pub fn execute_batch(&self, sql: &str) -> Result<(), SqliteFailure> {
         let c_sql = CString::new(sql).map_err(|_| SqliteFailure {
             code: SQLITE_ERROR,
             error_msg: "SQL script contains null bytes".into(),
@@ -177,10 +175,6 @@ impl Connection {
     ///     SELECT * FROM users;
     /// ")?;
     /// ```
-    pub fn execute_batch(&self, sql: &str) -> Result<(), SqliteFailure> {
-        self.exec(sql)?;
-        Ok(())
-    }
 
     /// Executes a runtime `SELECT` query and returns the resulting rows.
     ///
@@ -301,19 +295,19 @@ impl Connection {
     where
         F: FnOnce(&Self) -> Result<T, Error>,
     {
-        self.exec("BEGIN IMMEDIATE").map_err(Error::from)?;
+        self.execute_batch("BEGIN IMMEDIATE").map_err(Error::from)?;
 
         let result = f(self);
 
         match result {
             Ok(val) => {
-                if let Err(e) = self.exec("COMMIT") {
+                if let Err(e) = self.execute_batch("COMMIT") {
                     return Err(Error::from(e));
                 }
                 Ok(val)
             }
             Err(e) => {
-                let _ = self.exec("ROLLBACK");
+                let _ = self.execute_batch("ROLLBACK");
                 Err(e)
             }
         }
@@ -322,18 +316,18 @@ impl Connection {
     // where
     //     F: FnOnce(&Self) -> Result<T, Error>,
     // {
-    //     self.exec("BEGIN IMMEDIATE").map_err(Error::from)?;
+    //     self.execute_batch("BEGIN IMMEDIATE").map_err(Error::from)?;
 
     //     let result = f(self);
     //     match result {
     //         Ok(val) => {
-    //             if let Err(e) = self.exec("COMMIT") {
+    //             if let Err(e) = self.execute_batch("COMMIT") {
     //                 return Err(Error::from(e));
     //             }
     //             Ok(val)
     //         }
     //         Err(e) => {
-    //             let _ = self.exec("ROLLBACK");
+    //             let _ = self.execute_batch("ROLLBACK");
     //             Err(e)
     //         }
     //     }
