@@ -35,11 +35,46 @@ impl Drop for Connection {
 }
 
 impl Connection {
+    /// Opens a SQLite database from a file path.
+    ///
+    /// If the database file does not exist, it will be created automatically.
+    ///
+    /// This opens the database with read-write access enabled.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SqliteOpenErrors`] if the database cannot be opened.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let db = Connection::open("app.db")?;
+    /// ```
     pub fn open(filename: &str) -> Result<Arc<Self>, SqliteOpenErrors> {
         let flag = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
         Connection::open_with_flags(filename, flag)
     }
 
+    /// Opens an in-memory SQLite database.
+    ///
+    /// The database exists only in memory and is destroyed when the connection
+    /// is dropped.
+    ///
+    /// This is useful for testing, temporary computations, or ephemeral data.
+    ///
+    /// # Returns
+    ///
+    /// Returns an [`Arc<Self>`] wrapped in-memory connection.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SqliteOpenErrors`] if the database cannot be created.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let db = Connection::open_memory()?;
+    /// ```
     pub fn open_memory() -> Result<Arc<Self>, SqliteOpenErrors> {
         let flag = SQLITE_OPEN_MEMORY | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
         Connection::open_with_flags(":memory:", flag)
@@ -76,8 +111,28 @@ impl Connection {
         }
     }
 
-    /// Executes all SQL statements in a string. Useful for running mulit chain sql stmts. Alias to `execute_many_runtime`. avoid using this as it will be deprecated soon. TODO
-    // Do not delete this function for now. many macros depend on this function
+    /// Alias to [`execute_many_runtime`]. avoid using this as it will be deprecated soon.
+    /// Executes multiple SQL statements in a single string.
+    /// ---
+    /// This is useful for running batches of statements
+    ///
+    /// Unlike [`execute_runtime`] or [`query_runtime`], this method allows running more than one
+    /// SQL statement at once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SqliteFailure`] if any statement fails during execution.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// db.execute_many_runtime("
+    ///     CREATE TABLE users(id INTEGER);
+    ///     INSERT INTO users VALUES (1);
+    ///     SELECT * FROM users;
+    /// ")?;
+    /// ```
+    // TODO Do not delete this function for now. many macros depend on this function. eventually delte it as it is the same as as executre_many_runtime
     pub fn exec(&self, sql: &str) -> Result<(), SqliteFailure> {
         let c_sql = CString::new(sql).map_err(|_| SqliteFailure {
             code: SQLITE_ERROR,
@@ -101,14 +156,61 @@ impl Connection {
         Ok(())
     }
 
-    /// Executes all SQL statements in a string. Useful for running mulit chain sql stmts.
+    /// Executes multiple SQL statements in a single string.
+    ///
+    /// This is useful for running batches of statements
+    ///
+    /// Unlike [`execute_runtime`] or [`query_runtime`], this method allows running more than one
+    /// SQL statement at once.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SqliteFailure`] if any statement fails during execution.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// db.execute_many_runtime("
+    ///     CREATE TABLE users(id INTEGER);
+    ///     INSERT INTO users VALUES (1);
+    ///     SELECT * FROM users;
+    /// ")?;
+    /// ```
     pub fn execute_many_runtime(&self, sql: &str) -> Result<(), SqliteFailure> {
         self.exec(sql)?;
         Ok(())
     }
 
-    /// Use query_runtime for running SELECT statements.
-    /// Chaining of multiple sql queries via `;` are not allowed
+    /// Executes a runtime `SELECT` query and returns the resulting rows.
+    ///
+    /// This method is intended for read operations and returns a [`DynamicRows`]
+    /// iterator over the result set.
+    ///
+    /// Only a single SQL statement is allowed. Chaining multiple statements
+    /// using `;` is not supported. For executing multiple statements, see
+    /// [`execute_many_runtime`].
+    ///
+    /// # Returns
+    ///
+    /// Returns a [`DynamicRows`] handle that can be used to iterate over
+    /// the query results.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SqliteFailure`] if:
+    /// - the SQL statement fails to prepare
+    /// - the query is invalid or violates SQLite constraints
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let rows = db.query_runtime("SELECT id, name FROM users")?;
+    /// ```
+    ///
+    /// # See also
+    ///
+    /// - [`execute_runtime`] for write operations (`INSERT`, `UPDATE`, `DELETE`)
+    /// - [`execute_many_runtime`] for executing multiple SQL statements
     pub fn query_runtime(&self, sql: &str) -> Result<DynamicRows, SqliteFailure> {
         let mut stmt = std::ptr::null_mut();
         unsafe {
@@ -130,9 +232,33 @@ impl Connection {
         }
     }
 
-    /// Use execute_runtime for write statements (CREATE, INSERT, UPDATE, DELETE, etc.)
+    /// Executes a runtime SQL statement that modifies the database.
     ///
-    /// returns number of rows modified if successful
+    /// This method is intended for write operations such as
+    /// `CREATE`, `INSERT`, `UPDATE`, and `DELETE`.
+    ///
+    ///
+    /// # Returns
+    ///
+    /// Returns the **number** of rows modified by the statement if successful.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SqliteFailure`] if:
+    /// - the SQL statement fails to prepare
+    /// - execution fails (e.g. constraint violation, syntax error)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let rows = db.execute_runtime("UPDATE users SET active = 1")?;
+    /// println!("{} rows updated", rows);
+    /// ```
+    ///
+    /// # Notes
+    ///
+    /// - This method executes exactly one statement.
+    /// - To run multiple SQL statements at once, see [`execute_many_runtime`].
     pub fn execute_runtime(&self, sql: &str) -> Result<u64, SqliteFailure> {
         let mut stmt = std::ptr::null_mut();
 
