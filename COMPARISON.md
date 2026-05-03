@@ -15,20 +15,12 @@ equivalent code comparison can be found below. This is purely a **sqlite** compa
 | Bulk operations api| ✅ (`_many` auto-generated) | ❌ | ❌ |
 | Bool type support | ✅ | ❌ (0/1 manually) | not tested |
 |postgres `::` for type casting | ✅  | ❌ | ❌ |
-| | | | |
-| | | | |
-| | | | |
-| | | | |
-| | | | |
-| | | | |
-| | | | |
-| | | | |
-| | | | |
+
 
 \* even though `sqlitex` and `rusqlite` are sync only, you can wrap the calls in `tokio::task::spawn_blocking`.
 
 # Code Comparison
-
+Note:  you need to set the DATABASE_URL environment variable at build time to get compile time checks for `sqlx`
 <table>
 <tr>
 <th>sqlitex</th>
