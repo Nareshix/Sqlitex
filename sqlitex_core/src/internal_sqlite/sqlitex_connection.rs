@@ -77,6 +77,7 @@ impl Connection {
     }
 
     /// Executes all SQL statements in a string. Alias to `execute_many_runtime`. avoid using this as it will be deprecated soon. TODO
+    // Do not delete this function for now. many macros depend on this function
     pub fn exec(&self, sql: &str) -> Result<(), SqliteFailure> {
         let c_sql = CString::new(sql).map_err(|_| SqliteFailure {
             code: SQLITE_ERROR,
