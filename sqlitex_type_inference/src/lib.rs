@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::expr::sqlite_datatype_to_base_type;
+use crate::expr::{BaseType, sqlite_datatype_to_base_type};
 use crate::table::{ColumnInfo, normalize_identifier};
 use sqlparser::ast::{ColumnOption, ColumnOptionDef, DataType, Expr, Value, Visit, Visitor};
 use sqlparser::{ast::Statement, dialect::SQLiteDialect, parser::Parser};
@@ -61,12 +61,33 @@ pub fn validate_create_table_types(sql: &str) -> Result<(), String> {
                         col.name
                     ));
                 }
-                sqlite_datatype_to_base_type(&col.data_type).map_err(|_| {
+
+                let base_type = sqlite_datatype_to_base_type(&col.data_type).map_err(|_| {
                     format!(
                         "Unknown type `{}` for column `{}`.",
                         col.data_type, col.name
                     )
                 })?;
+                
+                // Translate valid sqlite type aliases into their STRICT-compliant equivalents for helpful compiler errors.
+                if is_strict {
+                    let type_str = col.data_type.to_string().to_uppercase();
+                    let allowed_strict = ["INT", "INTEGER", "REAL", "TEXT", "BLOB", "ANY"];
+
+                    if !allowed_strict.contains(&type_str.as_str()) {
+                        let suggestion = match base_type {
+                            BaseType::Integer => "INTEGER",
+                            BaseType::Real => "REAL",
+                            BaseType::Text => "TEXT",
+                            BaseType::Blob => "BLOB",
+                            _ => unreachable!(),
+                        };
+                        return Err(format!(
+                            "'{}' has '{}' type which is not supported in STRICT Tables. Use '{}' instead.",
+                            col.name, type_str, suggestion
+                        ));
+                    }
+                }
             }
         }
     }
@@ -305,7 +326,7 @@ pub fn rewrite_bool_columns(sql: &str) -> Result<String, String> {
 
     for stmt in &mut ast {
         if let Statement::CreateTable(create) = stmt {
-           // check is done for sql!() macro
+            // check is done for sql!() macro
             let is_strict = create.strict;
             for col in &mut create.columns {
                 let is_bool = matches!(&col.data_type, DataType::Boolean | DataType::Bool);
@@ -336,7 +357,8 @@ pub fn rewrite_bool_columns(sql: &str) -> Result<String, String> {
         }
     }
 
-    Ok(ast.iter()
+    Ok(ast
+        .iter()
         .map(|s| s.to_string())
         .collect::<Vec<String>>()
         .join(";\n"))
