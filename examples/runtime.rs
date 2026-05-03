@@ -3,9 +3,9 @@ use sqlitex::Connection;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let conn = Connection::open_memory()?;
 
-    // Use execute_runtime for write statements (CREATE, INSERT, UPDATE, DELETE, etc.)
+    // Use execute for write statements (CREATE, INSERT, UPDATE, DELETE, etc.)
     // Chaining of multiple sql queries via `;` are not allowed
-    conn.execute_runtime(
+    conn.execute(
         "CREATE TABLE products (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
@@ -15,16 +15,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // _rows_affected variable is the number of rows modified, which in this case is an insert of 3 rows
-    let _rows_affected = conn.execute_runtime(
+    let _rows_affected = conn.execute(
         "INSERT INTO products (name, price, in_stock) VALUES
         ('Laptop', 999.99, 1),
         ('Mouse', 25.50, 1),
         ('Keyboard', 75.00, 0)",
     )?;
 
-    // Use query_runtime for running SELECT statements
+    // Use query for running SELECT statements
     // Chaining of multiple sql queries via `;` are not allowed
-    let results = conn.query_runtime("SELECT * FROM products")?;
+    let results = conn.query("SELECT * FROM products")?;
     println!("Headers: {:?}", results.column_names); // id, name, price, in_stock
 
     // row_result is an iterator
@@ -37,10 +37,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // u can use helper functions like first() or all() to get a vector of rows.
     let _first_row = conn
-        .query_runtime("SELECT name, price FROM products WHERE id = 1")?
+        .query("SELECT name, price FROM products WHERE id = 1")?
         .first()?; // or .all()? for all rows
 
     Ok(())
 }
-
-

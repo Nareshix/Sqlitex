@@ -3,26 +3,35 @@
 follows `yyyy-mm-dd` format and can have
 headers of
 
-`Added`, `Migration`/`Breaking Changes`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`,  `Internal`
+`Added`, `Migration`/`Breaking Changes`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`, `Internal`
 
 ## ongoing - 2026-05-03
+
 TODOs document the added
+
 ### Added
+
 - compile time checks for virtual tables are not supported. Added this specific error for better clarity.
-- added `execute_many_runtime()` where we can run multiple chained sql statements (via `;`) at runtime.
+- added `execute_batch()` where we can run multiple chained sql statements (via `;`) at runtime.
 - added `_many` methods for write statements to easily have bulk operation without resorting to transactions
 
--  more robust error handling and suggestions for STRICT Table to get maximum benefits of this library. It will auto detect types that are valid but invalid in STRICT table and will suggest the correct type. It will also suggest using `CHECK (col in (0 or 1))` if you want to get `bool` type safety
+- more robust error handling and suggestions for STRICT Table to get maximum benefits of this library. It will auto detect types that are valid but invalid in STRICT table and will suggest the correct type. It will also suggest using `CHECK (col in (0 or 1))` if you want to get `bool` type safety
 - Generates an `init()` method if you are connecting via an external sql file. This allows to easily run whatever is defined in that sql file.
 
 ### Changes
+
 - All transactions starts in `IMMEDIATE` mode instead of `DEFERRED` mode. There is practically no differenece in a single connection, but it is more reliable and faster in multithreaded situation
+- fn name changes
+  1. `execute_runtime()` → `execute()`
+  2. `query_runtime` → `query()`
+
 
 ### Fixed
+
 - `CREATE TABLE` detection is now more robust by using AST parsing instead of string matching.
 
-
 ### Internal
+
 - unify type mapping and remove redundant code
 - Removed `check_constraint` field in `ColumnInfo` struct as it is no longer being used
 
@@ -38,9 +47,11 @@ PRAGMA foreign_keys = ON;
 PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
 ```
+
 This gives best performance and high relibaility
 
 ## [0.2.1] - 2026-05-02
+
 Documentation formatting
 
 ## [0.2.0] - 2026-05-02
@@ -63,6 +74,7 @@ Only the following casts are allowed:
 In previous versions, type casting was flexible. Any type could be casted to any other type. Upgrading to 0.2.0 introduces stricter rules that may break existing code. However, the changes are straightforward as the compiler will flag every affected line, making the fixes straightforward to apply.
 
 ## [0.1.1 - 0.1.10] - 2026-05-02
+
 Docuemntation updates and improvements. No code changes.
 
 ## [0.1.0] - 2026-05-01
@@ -82,7 +94,7 @@ Mostly variable and macro names have been changed for better clarity, but featur
 1. Library name changed from `lazysql` →`sqlitex`
 2. `LazyConnection `→ `Connection`
 3. `sql_runtime!()` → `sql_escape_hatch!()`
-4. `execute_dynamic()` → `execute_runtime()
+4. `execute_dynamic()` → `execute_runtime()`
 5. `query_dynamic()` → `query_runtime()`
 
 ## Earlier

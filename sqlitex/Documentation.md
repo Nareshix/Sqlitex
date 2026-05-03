@@ -23,6 +23,7 @@
 - [Strict INSERT Validation](#strict-insert-validation)
 
 ## Usage
+
 Install it via
 
 ```bash
@@ -68,8 +69,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // prints out "0, Alice, true"
 }
 ```
-For more examples, look at the [examples folder in github](https://github.com/Nareshix/sqlitex/tree/main/examples)
 
+For more examples, look at the [examples folder in github](https://github.com/Nareshix/sqlitex/tree/main/examples)
 
 ## Connection methods
 
@@ -167,8 +168,8 @@ sql!("SELECT price::text FROM items")
 
 [simple and short example for BLOB](https://github.com/Nareshix/sqlitex/tree/main/examples/blob)
 
-
 TODO
+
 ## Important note on STRICT tables
 
 It is a common advice to create STRICT tables in sqlite. However, it is not recommended to use it with `sqlitex`
@@ -311,7 +312,7 @@ PRAGMA journal_mode = WAL;
 PRAGMA synchronous = NORMAL;
 ```
 
-To override these settings or add more PRAGMA statements, u can use the `execute_runtime()` . They are simple enough that it doesn't warrant placing them in a `sql!()` macro for compile time checks, although nothing is stopping u from doing that
+To override these settings or add more PRAGMA statements, u can use the `execute()` . They are simple enough that it doesn't warrant placing them in a `sql!()` macro for compile time checks, although nothing is stopping u from doing that
 
 ## Strict INSERT Validation
 
