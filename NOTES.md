@@ -33,7 +33,6 @@ sql file and db file is read from Cargo.toml (the root of your project)
 docuemtn sql_runtime_exec can be used for chained statements
 
 transaction when hover ver should say wht it does with an example
-    // pub fn execute_script_runtime(&self,) TODO
 
 
 test out how good the other 2 connection methods are.
