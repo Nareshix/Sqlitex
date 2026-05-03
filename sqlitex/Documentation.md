@@ -1,28 +1,25 @@
 # sqlitex
+sqlitex is an ergonomic sqlite library for rust. Feature showcase can be found in the [github repo](https://github.com/Nareshix/sqlitex)
 
-- [Usage](#usage)
+- [Quickstart](#Qucikstart)
 - [Connection methods](#connection-methods)
-  1. [Inline Schema](#1-inline-schema)
-  2. [SQL File](#2-sql-file)
-  3. [Live Database](#3-live-database)
-- [Sqlitex features](#sqlitex-features)
-  1. [postgres `::` syntax](#postgres--type-casting-syntax)
-  2. [`all()` and `first()` methods for iterators](#all-and-first-methods-for-iterators)
-  3. [Transactions](#transactions)
-  4. [Runtime Features](#runtime-features)
-  5. [BLOB](#blob)
-
-- [Important note on STRICT tables](#important-note-on-strict-tables)
-- [When to use `sql_escape_hatch!`](#when-to-use-sql_escape_hatch)
-  - [How to use `sql_escape_hatch!`](#how-to-use-sql_escape_hatch)
-    - [SELECT statements](#a-select-statements)
-    - [No Return Type](#b-no-return-type)
-
-- [Type casting](#type-casting)
-- [Default PRAGMA Settings](#default-pragma-settings)
-- [Strict INSERT Validation](#strict-insert-validation)
-
-## Usage
+  - [inline schema](#1-inline-schema)
+  - [.sql file](#2-sql-file)
+  - [database](#3-live-database)
+- [Query helper functions](#query-helper-functions)
+  - [Postgres :: syntax
+](#postgres--type-casting-syntax)
+  - [all() / first()
+](#all-and-first-methods-for-iterators)
+- [Advanced](#advanced)
+  - [BLOB, Transactions, Runtime options etc](#blob-transactions-runtime-options-etc)
+  - [`sql_escape_hatch!()`](#sql_escape_hatch)
+- [References](#references)
+  - [Default pragma settings](#default-pragma-settings)
+  - [Strict insert validation](#strict-insert-validation)
+  - [Supported type mappings](#supported-type-mappings)
+  - [Supported type casting](#supported-type-casting)
+## Quickstart
 
 Install it via
 
@@ -139,22 +136,8 @@ Similar to connection via sql file, **ensure that the db file is placed at the r
 struct App { ... }
 ```
 
-## Core Concepts
-
-the `#[sqlitex!]` macro brings `sql!` and `sql_escape_hatch!` macro. so there is no need to import them. and they can only be used within structs defined with `sqlitex!`
-
-Note: Both `sql!` and `sql_escape_hatch!` accept only a single SQL statement at a time. Chaining multiple queries with semicolons (;) is not supported and will result in compile time error.
-
-1. ### `sql!` Macro
-
-   **Always prefer** to use this. It automatically:
-   1. **Infers Inputs:** Maps `?` to Rust types (`i64`, `f64`, `String`, `bool`).
-   2. **Generates Outputs:** For `SELECT` / `RETURNING` queries, creates a struct named after the field
-
-2. ### `sql_escape_hatch!` Macro
-   You will almost never need to use this in practice. If you are curious on wht it does, read [on this section below](#when-to-use-sql_escape_hatch)
-
-## Postgres `::` type casting syntax
+## Query helper functions
+### Postgres `::` type casting syntax
 
 ```rust
 sql!("SELECT price::text FROM items")
@@ -163,7 +146,7 @@ sql!("SELECT price::text FROM items")
 // "SELECT CAST(price AS TEXT) FROM items"
 ```
 
-## `all()` and `first()` methods for iterators
+### `all()` and `first()` methods for iterators
 
 - `all()` collects the iterator into a vector. Just a lightweight wrapper around .collect() to prevent adding type hints (Vec<\_>) in code
 
@@ -178,45 +161,20 @@ sql!("SELECT price::text FROM items")
   let results = db.get_active_users(false)?;
   let first_result = results.first()?.unwrap(); // returns the first row from the returned rows
   ```
-## BLOB, Transactions, Runtime options etc.
+
+## Advanced
+### BLOB, Transactions, Runtime options etc.
 They all are in the examples folder in github. They are short, simple and self-explanatory. https://github.com/Nareshix/sqlitex/tree/main/examples
-## Type mappings
-| SQLite Type without STRICT TABLE                                                                         | Rust Type           |
-| -------------------------------------------------------------------------------------------------------- | ------------------- |
-| `TEXT` / `CHARACTER` / `VARCHAR` / `CHARVARYING` / `CHARACTERVARYING` / `NVARCHAR` / `CLOB`              | `String` / `&str`   |
-| `INTEGER` / `INT` / `TINYINT` / `SMALLINT` / `MEDIUMINT` / `BIGINT` / `BIGINTUNSIGNED` / `INT2` / `INT8` | `i64`               |
-| `REAL` / `DOUBLE` / `DOUBLEPRECISION` / `FLOAT` / `NUMERIC` / `DECIMAL`                                  | `f64`               |
-| **`BOOLEAN`** / **`BOOL`**                                                                               | `bool`              |
-| `BLOB` / `BYTEA`                                                                                         | `Vec<u8>` / `&[u8]` |
+### `sql_escape_hatch!`
 
-## Type casting
-
-only these are supported for now to avoid unexpected behaviour.
-
-    Integer -> Real
-    Real -> Integer (note it gets truncated)
-    Integer -> Text
-    Real -> Text
-    Bool -> Integer (true -> 1, false -> 0)
-    Bool -> Real (true -> 1.0, false -> 0.0)
-
-
-## When to use `sql_escape_hatch!`
+`#[sqlitex]` not only brings `sql!()` macro, but also `sql_escape_hatch!()`. It is used for stmts that compiles fine at runtime but fails at compile time. This is almost never an issue in practice. For more info you can read [the section below](#why-sql_escape_hatch-was-created)
 
 you will most likely **never** need to use this.
 
-For some context, sqlite does not expose any api for type inference and schema awareness validation. Hence, I had to build a custom sql parser and implement type inference and schema awareness myself in order to provide compile time guarantees.
 
-In theory, there might be some edge cases for **extremely complex sql queries** that I might have missed, meaning the sql query should work perfectly fine in runtime but the compile time checks fail. In practice however, most SQL queries are straightforward enough that one will **_almost never_** get close to hitting it. It is also important to calrify that there will **never** be a case when a sql query passes compile time check but fails at runtime. If it compiles, it works.
+#### How to use `sql_escape_hatch!`
 
-This might sound like a perfect candidate for sql runtime features. While you can perfectly use it for this use case, u will miss out on the compile time guarantees.
-Since the sql is correct but compiler fails to catch it, u can use `sql_escape_hatch!` to define the sql itself. The code would seem abit more verbose but u can still secure that compile time guarantees.
-
-If you do somehow encounter this _false positive_, I would really appreicate it if you could open an issue on the [github repo](https://github.com/nareshix/sqlitex/issues).
-
-### How to use `sql_escape_hatch!`
-
-#### a. `SELECT` statements
+##### a. `SELECT` statements
 
 Note: This also works for `INSERT... RETURNING`
 You can map a query result to any struct by deriving `SqlMapping`.
@@ -256,7 +214,7 @@ fn foo{
 }
 ```
 
-#### b. No Return Type
+##### b. No Return Type
 
 For `INSERT`, `UPDATE`, or `DELETE` statements
 
@@ -269,7 +227,22 @@ struct Logger {
 ```
 
 
-## Default PRAGMA Settings.
+### Why `sql_escape_hatch!` was created
+
+This section covers basic explanation of library internals and won't affect how you use sqlitex. Feel free to skip it.
+
+For some context, sqlite does not expose any api for type inference and schema awareness validation. Hence, I had to build a custom sql parser and implement type inference and schema awareness myself in order to provide compile time guarantees.
+
+In theory, there might be some edge cases for **extremely complex sql queries** that I might have missed, meaning the sql query should work perfectly fine in runtime but the compile time checks fail. In practice however, most SQL queries are straightforward enough that one will **_almost never_** get close to hitting it. It is also important to calrify that there will **never** be a case when a sql query passes compile time check but fails at runtime. If it compiles, it works.
+
+This might sound like a perfect candidate for sql runtime features. While you can perfectly use it for this use case, u will miss out on the compile time guarantees.
+Since the sql is correct but compiler fails to catch it, u can use `sql_escape_hatch!` to define the sql itself. The code would seem abit more verbose but u can still secure that compile time guarantees.
+
+If you do somehow encounter this _false positive_, I would really appreicate it if you could open an issue on the [github repo](https://github.com/nareshix/sqlitex/issues).
+
+
+## References
+### Default PRAGMA Settings.
 
 The default settings are
 
@@ -282,6 +255,38 @@ PRAGMA synchronous = NORMAL;
 
 To override these settings or add more PRAGMA statements, u can use the `execute()` . They are simple enough that it doesn't warrant placing them in a `sql!()` macro for compile time checks, although nothing is stopping u from doing that
 
-## Strict INSERT Validation
+### Strict INSERT Validation
 
 - Although standard SQL allows inserting any number of columns to a table, sqlitex checks INSERT statements at compile time. If you omit any column (except for `AUTOINCREMENT` and `DEFAULT`), code will fail to compile. This means you must either specify all columns explicitly, or use implicit insertion for all columns. This is done to prevent certain runtime errors such as `NOT NULL constraint failed` and more.
+
+
+### Supported Type mappings
+| SQLite Type without STRICT TABLE                                                                         | Rust Type           |
+| -------------------------------------------------------------------------------------------------------- | ------------------- |
+| `TEXT` / `CHARACTER` / `VARCHAR` / `CHARVARYING` / `CHARACTERVARYING` / `NVARCHAR` / `CLOB`              | `String` / `&str`   |
+| `INTEGER` / `INT` / `TINYINT` / `SMALLINT` / `MEDIUMINT` / `BIGINT` / `BIGINTUNSIGNED` / `INT2` / `INT8` | `i64`               |
+| `REAL` / `DOUBLE` / `DOUBLEPRECISION` / `FLOAT` / `NUMERIC` / `DECIMAL`                                  | `f64`               |
+| **`BOOLEAN`** / **`BOOL`**                                                                               | `bool`              |
+| `BLOB` / `BYTEA`                                                                                         | `Vec<u8>` / `&[u8]` |
+
+| SQLite Type with STRICT TABLE | Rust Type           |
+| ----------------------------- | ------------------- |
+| `INTEGER` / `INT`             | `i64`               |
+| `REAL`                        | `f64`               |
+| `TEXT`                        | `String` / `&str`   |
+| `BLOB`                        | `Vec<u8>` / `&[u8]` |
+| `ANY`                         | `-`                 |
+
+
+### Supported type casting
+
+only these are supported for now to avoid unexpected behaviour.
+
+    Integer -> Real
+    Real -> Integer (note it gets truncated)
+    Integer -> Text
+    Real -> Text
+    Bool -> Integer (true -> 1, false -> 0)
+    Bool -> Real (true -> 1.0, false -> 0.0)
+
+
