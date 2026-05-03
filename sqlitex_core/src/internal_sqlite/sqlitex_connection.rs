@@ -156,30 +156,10 @@ impl Connection {
     where
         F: FnOnce(&Self) -> Result<T, Error>,
     {
-        self.exec("BEGIN").map_err(Error::from)?;
-
-        let result = f(self);
-
-        match result {
-            Ok(val) => {
-                if let Err(e) = self.exec("COMMIT") {
-                    return Err(Error::from(e));
-                }
-                Ok(val)
-            }
-            Err(e) => {
-                let _ = self.exec("ROLLBACK");
-                Err(e)
-            }
-        }
-    }
-    pub fn transaction_immediate<T, F>(&self, f: F) -> Result<T, Error>
-    where
-        F: FnOnce(&Self) -> Result<T, Error>,
-    {
         self.exec("BEGIN IMMEDIATE").map_err(Error::from)?;
 
         let result = f(self);
+
         match result {
             Ok(val) => {
                 if let Err(e) = self.exec("COMMIT") {
@@ -193,4 +173,24 @@ impl Connection {
             }
         }
     }
+    // pub fn transaction_immediate<T, F>(&self, f: F) -> Result<T, Error>
+    // where
+    //     F: FnOnce(&Self) -> Result<T, Error>,
+    // {
+    //     self.exec("BEGIN IMMEDIATE").map_err(Error::from)?;
+
+    //     let result = f(self);
+    //     match result {
+    //         Ok(val) => {
+    //             if let Err(e) = self.exec("COMMIT") {
+    //                 return Err(Error::from(e));
+    //             }
+    //             Ok(val)
+    //         }
+    //         Err(e) => {
+    //             let _ = self.exec("ROLLBACK");
+    //             Err(e)
+    //         }
+    //     }
+    // }
 }

@@ -10,12 +10,13 @@ TODOs document the added
 ### Added
 - compile time checks for virtual tables are not supported. Added this specific error for better clarity.
 - added `execute_many_runtime()` where we can run multiple chained sql statements (via `;`) at runtime.
-- Added more robust error handling and suggestions for STRICT Table to get maximum benefits of this library. It will auto detect types that are valid but invalid in STRICT table and will suggest the correct type. It will also suggest using `CHECK (col in (0 or 1))` if you want to get `bool` type safety
-- Generates an `init()` method if you are connecting via an external sql file. This allows to easily run whatever is defined in that sql file.
 - added `_many` methods for write statements to easily have bulk operation without resorting to transactions
-- added `transaction_immediate` for both runtime and compile time. Prefer that to  `transaction` if you are going to mix write and read stmts. If you are going to have purely read stmts, prefer `transaction`.
 
-  - Internally,they are the same except `transaction immedate` starts transaction with `BEGIN IMMEDIATE` while `transasction` starts with `BEGIN DEFERRED`
+-  more robust error handling and suggestions for STRICT Table to get maximum benefits of this library. It will auto detect types that are valid but invalid in STRICT table and will suggest the correct type. It will also suggest using `CHECK (col in (0 or 1))` if you want to get `bool` type safety
+- Generates an `init()` method if you are connecting via an external sql file. This allows to easily run whatever is defined in that sql file.
+
+### Changes
+- All transactions starts in `IMMEDIATE` mode instead of `DEFERRED` mode. There is practically no differenece in a single connection, but it is more reliable and faster in multithreaded situation
 
 ### Fixed
 - `CREATE TABLE` detection is now more robust by using AST parsing instead of string matching.
