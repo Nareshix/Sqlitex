@@ -140,8 +140,7 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
                     let base_type = if is_detected_boolean {
                         BaseType::Bool
                     } else {
-                        sqlite_datatype_to_base_type(&col.data_type)
-                            .unwrap_or(BaseType::Null)
+                        sqlite_datatype_to_base_type(&col.data_type).unwrap_or(BaseType::Null)
                     };
 
                     ColumnInfo {

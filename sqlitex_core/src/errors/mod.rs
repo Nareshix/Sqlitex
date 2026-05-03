@@ -1,6 +1,8 @@
 use std::ffi::c_int;
 
-use crate::errors::{connection::SqlitePrepareErrors, row::RowMapperError, statement::StatementStepErrors};
+use crate::errors::{
+    connection::SqlitePrepareErrors, row::RowMapperError, statement::StatementStepErrors,
+};
 
 pub mod connection;
 pub mod row;
@@ -48,7 +50,6 @@ pub enum SqlReadErrorBindings {
     #[error("Failed to Bind: {0}")]
     Bind(#[from] SqliteFailure),
 }
-
 
 /// Unified Error type for transactios since anything can go wrong.
 #[derive(thiserror::Error, Debug)]
