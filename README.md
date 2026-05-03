@@ -1,7 +1,8 @@
 # Sqlitex
 
-Sqlitex is a sqlite library for rust with compile time guarantees. It also has additional features:
+Sqlitex is a sqlite library for rust. It offers
 
+- Compile time guarantees
 - Ergonomic with excellent IDE support
 - Very Fast
   - Automatically caches and reuses prepared statements for you
