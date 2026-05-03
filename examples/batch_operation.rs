@@ -13,7 +13,6 @@ struct AppDatabase {
     ),
 
     add_user: sql!("INSERT INTO users (id, username, is_active) VALUES (?::REAL, ?, ?);"),
-    add_use: sql!("INSERT INTO users (id, username, is_active) VALUES (?::REAL, ?, ?);"),
 
     get_active_users: sql!(
         "SELECT CAST (id AS REAL), username, is_active as active FROM users WHERE is_active = ?"
