@@ -7,7 +7,7 @@ use sqlparser::ast::{
 use sqlparser::dialect::SQLiteDialect;
 use sqlparser::parser::Parser;
 
-use crate::expr::{BaseType, Type};
+use crate::expr::{BaseType, Type, sqlite_datatype_to_base_type};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ColumnInfo {
@@ -74,51 +74,6 @@ fn is_boolean_constraint(expr: &Expr) -> bool {
     }
 }
 
-fn convert_sqlite_to_rust_type(sql: String, nullable: bool, is_bool_context: bool) -> Type {
-    let sql_upper = sql.to_uppercase();
-
-    if is_bool_context || sql_upper.contains("BOOL") {
-        Type {
-            base_type: BaseType::Bool,
-            nullable,
-            contains_placeholder: false,
-        }
-    } else if sql_upper.contains("INT") {
-        Type {
-            base_type: BaseType::Integer,
-            nullable,
-            contains_placeholder: false,
-        }
-    } else if sql_upper.contains("REAL")
-        || sql_upper.contains("FLOAT")
-        || sql_upper.contains("DOUBLE")
-    {
-        Type {
-            base_type: BaseType::Real,
-            nullable,
-            contains_placeholder: false,
-        }
-    } else if sql_upper.contains("TEXT") {
-        Type {
-            base_type: BaseType::Text,
-            nullable,
-            contains_placeholder: false,
-        }
-    } else if sql_upper.contains("BLOB") {
-        Type {
-            base_type: BaseType::Blob,
-            nullable,
-            contains_placeholder: false,
-        }
-    } else {
-        Type {
-            base_type: BaseType::Null,
-            nullable,
-            contains_placeholder: false,
-        }
-    }
-}
-
 pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
     let dialect = SQLiteDialect {};
     let Ok(ast) = Parser::parse_sql(&dialect, sql) else {
@@ -182,15 +137,20 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
                         }
                     }
 
-                    let data_type = convert_sqlite_to_rust_type(
-                        col.data_type.to_string(),
-                        nullable,
-                        is_detected_boolean,
-                    );
+                    let base_type = if is_detected_boolean {
+                        BaseType::Bool
+                    } else {
+                        sqlite_datatype_to_base_type(&col.data_type)
+                            .unwrap_or(BaseType::Null)
+                    };
 
                     ColumnInfo {
                         name: normalize_identifier(&col.name),
-                        data_type,
+                        data_type: Type {
+                            base_type,
+                            nullable,
+                            contains_placeholder: false,
+                        },
                         has_default: is_default,
                     }
                 })
