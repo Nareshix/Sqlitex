@@ -111,7 +111,6 @@ impl Connection {
         }
     }
 
-    /// Alias to [`execute_batch`]. avoid using this as it will be deprecated soon.
     /// Executes multiple SQL statements in a single string.
     /// ---
     /// This is useful for running batches of statements
@@ -155,26 +154,6 @@ impl Connection {
         Ok(())
     }
 
-    /// Executes multiple SQL statements in a single string.
-    ///
-    /// This is useful for running batches of statements
-    ///
-    /// Unlike [`execute`] or [`query`], this method allows running more than one
-    /// SQL statement at once.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`SqliteFailure`] if any statement fails during execution.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// db.execute_batch("
-    ///     CREATE TABLE users(id INTEGER);
-    ///     INSERT INTO users VALUES (1);
-    ///     SELECT * FROM users;
-    /// ")?;
-    /// ```
 
     /// Executes a runtime `SELECT` query and returns the resulting rows.
     ///
