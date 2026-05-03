@@ -16,7 +16,7 @@ headers of
 - more robust error handling and suggestions for STRICT Table to get maximum benefits of this library. It will auto detect types that are valid but invalid in STRICT table and will suggest the correct type. It will also suggest using `CHECK (col in (0 or 1))` if you want to get `bool` type safety
 - Generates an `init()` method if you are connecting via an external sql file. This allows to easily run whatever is defined in that sql file.
 - doc comments for most commonly used functions are written deatilly
-- (ongoing) fixing the nested tx bug, which also includes not being able to use _many inside tx as htey both intenrally use t (nested BEGIN COMMIT are illegal in sqlite)
+- (ongoing) fixing the nested tx bug, which also includes not being able to use _many inside tx as htey both intenrally use t (nested BEGIN COMMIT are illegal in sqlite). after finsih document it as well
 
 ### Changes
 
