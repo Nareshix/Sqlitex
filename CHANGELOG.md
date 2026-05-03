@@ -5,9 +5,7 @@ headers of
 
 `Added`, `Migration`/`Breaking Changes`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`, `Internal`
 
-## ongoing - 2026-05-03
-
-TODOs document the added
+## [0.3.0/1.0.0] - 2026-05-03
 
 ### Added
 
@@ -17,6 +15,7 @@ TODOs document the added
 
 - more robust error handling and suggestions for STRICT Table to get maximum benefits of this library. It will auto detect types that are valid but invalid in STRICT table and will suggest the correct type. It will also suggest using `CHECK (col in (0 or 1))` if you want to get `bool` type safety
 - Generates an `init()` method if you are connecting via an external sql file. This allows to easily run whatever is defined in that sql file.
+- doc comments for most commonly used functions are written deatilly
 
 ### Changes
 
@@ -34,7 +33,7 @@ TODOs document the added
 
 - unify type mapping and remove redundant code
 - Removed `check_constraint` field in `ColumnInfo` struct as it is no longer being used
-- removed `exec` fn and replaced all macro genreation which dependent on it with `execute_batch` 
+- removed `exec` fn and replaced all macro genreation which dependent on it with `execute_batch`
 
 ## [0.2.2] - 2026-05-03
 
