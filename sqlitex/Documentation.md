@@ -167,6 +167,8 @@ sql!("SELECT price::text FROM items")
 
 [simple and short example for BLOB](https://github.com/Nareshix/sqlitex/tree/main/examples/blob)
 
+
+TODO
 ## Important note on STRICT tables
 
 It is a common advice to create STRICT tables in sqlite. However, it is not recommended to use it with `sqlitex`

@@ -22,8 +22,9 @@ To allow CREATE TABLE stmts anywhere within the macro, we can scan all the creat
 1. for hover over funciton, need to test whether it works on other editors. works great on vscode
 
 2. rn blob loads everything to memory. maybe add streaming support for blob?
+3. add a lint or smth that says strict table avoid using bool for compatibilit reason, tho it will work. can i add that somewhere? or can i straight up trhow an error. i wanna do either but wht blcok of code to hcange and where
 
-3. check_constraint field in SELECT is ignored for now.
+
 
 
 # Feature addition (subjected to confirmation)
