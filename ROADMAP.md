@@ -1,9 +1,5 @@
-no need to add anything to changelog anymore. can prep tag release from there
-Must fix:
-
-#14 \_bulk reserved name error — already half done, just add the compile error
-
-Push to 0.4.0:
+TODO not cfmed
+0.4.0:
 
 #8 Refactoring (most impt)
 #21 QoL things
