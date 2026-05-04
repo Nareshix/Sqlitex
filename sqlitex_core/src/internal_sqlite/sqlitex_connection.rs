@@ -284,14 +284,42 @@ impl Connection {
                 .map_err(Error::from)?;
         }
 
+        // Drop on panic unwind
+        struct RollbackGuard<'a> {
+            conn: &'a Connection,
+            is_outermost: bool,
+            committed: bool,
+        }
+
+        impl<'a> Drop for RollbackGuard<'a> {
+            fn drop(&mut self) {
+                if !self.committed {
+                    if self.is_outermost {
+                        let _ = self.conn.execute_batch("ROLLBACK");
+                    } else {
+                        let _ = self
+                            .conn
+                            .execute_batch("ROLLBACK TO SAVEPOINT sqlitex_runtime_tx");
+                        let _ = self
+                            .conn
+                            .execute_batch("RELEASE SAVEPOINT sqlitex_runtime_tx");
+                    }
+                }
+            }
+        }
+
+        let mut guard = RollbackGuard {
+            conn: self,
+            is_outermost,
+            committed: false,
+        };
+
         let result = f(self);
 
         match result {
             Ok(val) => {
                 if is_outermost {
                     if let Err(e) = self.execute_batch("COMMIT") {
-                        let _ = self.execute_batch("ROLLBACK");
-
                         return Err(Error::from(e));
                     }
                 } else {
@@ -299,38 +327,10 @@ impl Connection {
                         return Err(Error::from(e));
                     }
                 }
+                guard.committed = true;
                 Ok(val)
             }
-            Err(e) => {
-                if is_outermost {
-                    let _ = self.execute_batch("ROLLBACK");
-                } else {
-                    let _ = self.execute_batch("ROLLBACK TO SAVEPOINT sqlitex_runtime_tx");
-                    let _ = self.execute_batch("RELEASE SAVEPOINT sqlitex_runtime_tx");
-                }
-                Err(e)
-            }
+            Err(e) => Err(e),
         }
     }
-
-    // pub fn transaction_immediate<T, F>(&self, f: F) -> Result<T, Error>
-    // where
-    //     F: FnOnce(&Self) -> Result<T, Error>,
-    // {
-    //     self.execute_batch("BEGIN IMMEDIATE").map_err(Error::from)?;
-
-    //     let result = f(self);
-    //     match result {
-    //         Ok(val) => {
-    //             if let Err(e) = self.execute_batch("COMMIT") {
-    //                 return Err(Error::from(e));
-    //             }
-    //             Ok(val)
-    //         }
-    //         Err(e) => {
-    //             let _ = self.execute_batch("ROLLBACK");
-    //             Err(e)
-    //         }
-    //     }
-    // }
 }
