@@ -1,0 +1,3 @@
+[alias]
+testt = "nextest run"
+t = "nextest run"
