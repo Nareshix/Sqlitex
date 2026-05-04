@@ -955,17 +955,31 @@ db.transaction(|tx| {
                 #(#generated_structs)*
                 #item_struct
 
-                impl #impl_generics #struct_name #ty_generics #where_clause {
-                pub fn new(
-                    db: impl Into<std::sync::Arc<sqlitex::internal_sqlite::sqlitex_connection::Connection>>,
-                    #(#standard_params),*
-                ) -> Self {
-                    Self {
-                        __db: db.into(), // Call .into() to turn it into the Arc
-                        #(#standard_assignments,)*
-                        #(#sql_assignments,)*
-                        }
-                    }
+                            impl #impl_generics #struct_name #ty_generics #where_clause {
+                            /// Creates a new instance.
+                            ///
+                            /// To share one connection across multiple structs, clone the `Arc`:
+                            ///
+                            /// # Example
+                            /// ```rust,ignore
+                            /// let conn = Connection::open("app.db")?; // the conn is the arc btw
+                            ///
+                            /// let mut users = UsersDb::new(conn.clone());
+                            /// let mut logs  = LogsDb::new(conn.clone());
+                            /// let mut posts = PostsDb::new(conn); // last one doesn't need clone
+                            /// ```
+                            ///
+                            /// `Arc::clone` does not duplicate the connection. All structs point to the same database.
+                            pub fn new(
+                                db: impl Into<std::sync::Arc<sqlitex::internal_sqlite::sqlitex_connection::Connection>>,
+                                #(#standard_params),*
+                            ) -> Self {
+                                Self {
+                                    __db: db.into(), // Call .into() to turn it into the Arc
+                                    #(#standard_assignments,)*
+                                    #(#sql_assignments,)*
+                                    }
+                                }
 
 
     #[doc = #transaction_doc]
