@@ -1,0 +1,4 @@
+[profile.default]
+status-level = "fail"
+final-status-level = "fail"
+fail-fast = false
