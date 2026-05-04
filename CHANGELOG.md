@@ -1,11 +1,10 @@
 # Changelog
 
-follows `yyyy-mm-dd` format and can have
-headers of
+**follows `yyyy-mm-dd` format**
 
 non-exhaustive but some ideas: `Added`, `Migration`/`Breaking Changes`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`, `Internal`
 
-## [0.3.0] - Ongoing
+## [0.3.0] - 05-05-2026
 
 ### Added
 
@@ -35,6 +34,9 @@ non-exhaustive but some ideas: `Added`, `Migration`/`Breaking Changes`, `Changed
 - unify type mapping and remove redundant code
 - Removed `check_constraint` field in `ColumnInfo` struct as it is no longer being used
 - removed `exec` fn and replaced all macro genreation which dependent on it with `execute_batch`
+
+## [0.2.3 - 0.2.5] - 2026-05-04
+Documentation testing
 
 ## [0.2.2] - 2026-05-03
 
