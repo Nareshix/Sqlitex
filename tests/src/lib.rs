@@ -1,4 +1,5 @@
 use sqlitex::sqlitex;
+mod nested_tx;
 
 #[sqlitex]
 pub struct ShopDao {
