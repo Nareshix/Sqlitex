@@ -252,6 +252,19 @@ fn expand(
             ));
         }
 
+        // `_bulk` is reserved for auto-generated batch methods
+        let ident_str = ident.to_string();
+        if ident_str.ends_with("_bulk") {
+            let base_name = ident_str.strip_suffix("_bulk").unwrap();
+            return Err(syn::Error::new(
+                ident.span(),
+                format!(
+                    "`{}` has been reserved. This method is automatically generated for batch operations for `{}` method. Choose a different name.",
+                    ident_str, base_name
+                ),
+            ));
+        }
+
         let field_attrs = &field.attrs;
 
         // Check if type is sql!("...")
