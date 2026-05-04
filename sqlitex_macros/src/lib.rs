@@ -942,11 +942,11 @@ db.transaction(|tx| {
 })?;"#;
 
     Ok(quote! {
-                        #[doc(hidden)]
-                        mod #mod_name {
-                            use super::*;
-                            #(#generated_structs)*
-                            #item_struct
+                #[doc(hidden)]
+                mod #mod_name {
+                    use super::*;
+                    #(#generated_structs)*
+                    #item_struct
 
                             impl #impl_generics #struct_name #ty_generics #where_clause {
                             /// Creates a new instance.
