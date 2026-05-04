@@ -25,13 +25,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Use query for running SELECT statements
     // Chaining of multiple sql queries via `;` are not allowed
     let results = conn.query("SELECT * FROM products")?;
-    println!("Headers: {:?}", results.column_names); // id, name, price, in_stock
+
+    // results.column_names is a vec of all the col names defined in the create table
+    // which in this case is ["id", "name", "price", "in_stock"]
+    println!("All column names: {:?}", results.column_names);
 
     // row_result is an iterator
     for row_result in results {
         let row = row_result?;
         for value in row {
-            print!("{:?} ", value); // or u could do value.as_string(), value.as_f64(), value.as_i64(), etc. to convert the enum to specific type
+            // or u could do value.as_string(), value.as_f64(), value.as_i64(), etc. to convert the enum to specific type
+            print!("{:?}\n ", value);
         }
     }
 
