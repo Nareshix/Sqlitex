@@ -8,23 +8,9 @@ Sqlitex is a sqlite library for rust which aims to be simple and powerful. It of
   - Automatically caches and reuses prepared statements for you
   - Automatically applies optimal PRAGMA settings for performance and reliability
 
-## Feature showcase
-
-1.  Auto generate method signatures with correct types and
-    Hover over to see sql code
-
-    ![usage](https://github.com/Nareshix/sqlitex/raw/main/amedia_for_readme/usage.gif)
-
-(Note: `LazyConnection` has been renamed to `Connection` in newer version. library name was previously called LazySql which has now been renamed to Sqlitex)
-
-2. Compile time errors with good error messages
-
-   ![error_1](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_1.png?raw=true)
-
-   ![error_2](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_2.png?raw=true)
-
-   ![error_3](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_3.png?raw=true)
-
+- [Quickstart](#quickstart)
+- [Feature Showcase](#feature-showcase)
+- [Comparison with other libraries](#comparison-with-other-libraries)
 
 ## Quickstart
 Install it via
@@ -76,6 +62,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 _A more detailed version of this exact quickstart can be found_ [here](./examples/quick_start.rs)
 
 For more examples and features, look at the [examples](./examples/) folder or read the [documentations](https://docs.rs/sqlitex/latest/sqlitex/).
+
+
+## Feature showcase
+
+1.  Auto generate method signatures with correct types and
+    Hover over to see sql code
+
+    ![usage](https://github.com/Nareshix/sqlitex/raw/main/amedia_for_readme/usage.gif)
+
+(Note: `LazyConnection` has been renamed to `Connection` in newer version. library name was previously called LazySql which has now been renamed to Sqlitex)
+
+2. Compile time errors with good error messages
+
+   ![error_1](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_1.png?raw=true)
+
+   ![error_2](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_2.png?raw=true)
+
+   ![error_3](https://github.com/Nareshix/sqlitex/blob/main/amedia_for_readme/error_3.png?raw=true)
+
+
 
 ## Comparison with other libraries
 [Look here](./COMPARISON.md)
