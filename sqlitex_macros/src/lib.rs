@@ -481,11 +481,16 @@ fn expand(
                     };
 
                     many_bind_calls.push(quote! {
-        if let Err(__e) = preparred_statement.bind_parameter(#bind_index, #bind_expr) {
-            let _ = self.__db.execute_batch("ROLLBACK");
-            return Err(sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Bind(__e)));
-        }
-    });
+                        if let Err(__e) = preparred_statement.bind_parameter(#bind_index, #bind_expr) {
+                            if is_outermost {
+                                let _ = self.__db.execute_batch("ROLLBACK");
+                            } else {
+                                let _ = self.__db.execute_batch("ROLLBACK TO SAVEPOINT sqlitex_batch");
+                                let _ = self.__db.execute_batch("RELEASE SAVEPOINT sqlitex_batch");
+                            }
+                            return Err(sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Bind(__e)));
+                        }
+                    });
                 }
 
                 let (item_type, final_many_bind_calls) = if binding_types.len() == 1 {
@@ -506,11 +511,15 @@ fn expand(
 
                     let single_call = quote! {
                         if let Err(__e) = preparred_statement.bind_parameter(1, #single_bind_expr) {
-                            let _ = self.__db.execute_batch("ROLLBACK");
+                            if is_outermost {
+                                let _ = self.__db.execute_batch("ROLLBACK");
+                            } else {
+                                let _ = self.__db.execute_batch("ROLLBACK TO SAVEPOINT sqlitex_batch");
+                                let _ = self.__db.execute_batch("RELEASE SAVEPOINT sqlitex_batch");
+                            }
                             return Err(sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Bind(__e)));
                         }
                     };
-
                     (many_owned_types[0].clone(), vec![single_call])
                 } else {
                     (quote! { (#(#many_owned_types),*) }, many_bind_calls)
@@ -524,7 +533,7 @@ This operation is atomic and if you need more precise control over batching, use
 
 # Example
 
-````rust
+```rust, ignore
 let bulk = [
     (0.0, "Alice".to_string(), true),
     (1.0, "Bob".to_string(), false),
@@ -537,48 +546,67 @@ db.{}_many(&bulk)?;
                 );
 
                 generated_methods.push(quote! {
-    #(#field_attrs)*
-    #[doc = #many_doc_header]
-    #[doc = #doc_comment]
-    pub fn #many_ident(&mut self, items: &[#item_type]) -> Result<(), sqlitex::errors::Error> {
-        if items.is_empty() {
-            return Ok(());
-        }
+                    #(#field_attrs)*
+                    #[doc = #many_doc_header]
+                    #[doc = #doc_comment]
+                    pub fn #many_ident(&mut self, items: &[#item_type]) -> Result<(), sqlitex::errors::Error> {
+                        if items.is_empty() {
+                            return Ok(());
+                        }
 
-        if self.#ident.stmt.is_null() {
-            unsafe {
-                sqlitex::utility::utils::prepare_stmt(
-                    self.__db.db,
-                    &mut self.#ident.stmt,
-                    self.#ident.sql_query
-                ).map_err(|e| sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Prepare(e)))?;
-            }
-        }
+                        if self.#ident.stmt.is_null() {
+                            unsafe {
+                                sqlitex::utility::utils::prepare_stmt(
+                                    self.__db.db,
+                                    &mut self.#ident.stmt,
+                                    self.#ident.sql_query
+                                ).map_err(|e| sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Prepare(e)))?;
+                            }
+                        }
 
-        self.__db.execute_batch("BEGIN IMMEDIATE").map_err(sqlitex::errors::Error::from)?;
+                        let is_outermost = unsafe { sqlitex::libsqlite3_sys::sqlite3_get_autocommit(self.__db.db) != 0 };
 
-        for item in items {
-            let mut preparred_statement = sqlitex::internal_sqlite::preparred_statement::PreparredStmt {
-                stmt: self.#ident.stmt,
-                conn: self.__db.db,
-            };
+                        if is_outermost {
+                            self.__db.execute_batch("BEGIN IMMEDIATE").map_err(sqlitex::errors::Error::from)?;
+                        } else {
+                            self.__db.execute_batch("SAVEPOINT sqlitex_batch").map_err(sqlitex::errors::Error::from)?;
+                        }
 
-            #(#final_many_bind_calls)*
+                        for item in items {
+                            let mut preparred_statement = sqlitex::internal_sqlite::preparred_statement::PreparredStmt {
+                                stmt: self.#ident.stmt,
+                                conn: self.__db.db,
+                            };
 
-            if let Err(__e) = preparred_statement.step() {
-                let _ = self.__db.execute_batch("ROLLBACK");
-                return Err(sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Step(__e)));
-            }
-        }
+                            #(#final_many_bind_calls)*
 
-        if let Err(__e) = self.__db.execute_batch("COMMIT") {
-            let _ = self.__db.execute_batch("ROLLBACK");
-            return Err(sqlitex::errors::Error::from(__e));
-        }
+                            if let Err(__e) = preparred_statement.step() {
+                                if is_outermost {
+                                    let _ = self.__db.execute_batch("ROLLBACK");
+                                } else {
+                                    let _ = self.__db.execute_batch("ROLLBACK TO SAVEPOINT sqlitex_batch");
+                                    let _ = self.__db.execute_batch("RELEASE SAVEPOINT sqlitex_batch");
+                                }
+                                return Err(sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Step(__e)));
+                            }
+                        }
 
-        Ok(())
-    }
-});
+                        if is_outermost {
+                            if let Err(__e) = self.__db.execute_batch("COMMIT") {
+                                let _ = self.__db.execute_batch("ROLLBACK");
+                                return Err(sqlitex::errors::Error::from(__e));
+                            }
+                        } else {
+                            if let Err(__e) = self.__db.execute_batch("RELEASE SAVEPOINT sqlitex_batch") {
+                                let _ = self.__db.execute_batch("ROLLBACK TO SAVEPOINT sqlitex_batch");
+                                let _ = self.__db.execute_batch("RELEASE SAVEPOINT sqlitex_batch");
+                                return Err(sqlitex::errors::Error::from(__e));
+                            }
+                        }
+
+                        Ok(())
+                    }
+                });
             } else if !select_types.is_empty() && binding_types.is_empty() {
                 let method_name = ident.to_string();
                 let pascal_name: String = method_name
@@ -885,7 +913,7 @@ If the closure returns `Err`, the transaction is rolled back.
 
 # Example
 
-```rust
+```rust, ignore
 db.transaction(|tx| {
     tx.insert_user("Alice")?;
     tx.insert_post("Hello")?;
@@ -893,23 +921,23 @@ db.transaction(|tx| {
 })?;"#;
 
     Ok(quote! {
-        #[doc(hidden)]
-        mod #mod_name {
-            use super::*;
-            #(#generated_structs)*
-            #item_struct
+            #[doc(hidden)]
+            mod #mod_name {
+                use super::*;
+                #(#generated_structs)*
+                #item_struct
 
-            impl #impl_generics #struct_name #ty_generics #where_clause {
-                    pub fn new(
-                db: impl Into<std::sync::Arc<sqlitex::internal_sqlite::sqlitex_connection::Connection>>,
-                #(#standard_params),*
-            ) -> Self {
-                Self {
-                    __db: db.into(), // Call .into() to turn it into the Arc
-                    #(#standard_assignments,)*
-                    #(#sql_assignments,)*
+                impl #impl_generics #struct_name #ty_generics #where_clause {
+                        pub fn new(
+                    db: impl Into<std::sync::Arc<sqlitex::internal_sqlite::sqlitex_connection::Connection>>,
+                    #(#standard_params),*
+                ) -> Self {
+                    Self {
+                        __db: db.into(), // Call .into() to turn it into the Arc
+                        #(#standard_assignments,)*
+                        #(#sql_assignments,)*
+                        }
                     }
-                }
 
 
     #[doc = #transaction_doc]
@@ -917,57 +945,75 @@ db.transaction(|tx| {
     where
         F: FnOnce(&mut Self) -> Result<T, sqlitex::errors::Error>,
     {
-        self.__db.execute_batch("BEGIN IMMEDIATE")
-            .map_err(sqlitex::errors::Error::from)?;
+        // Check if we are the outermost transaction
+        let is_outermost = unsafe {
+            sqlitex::libsqlite3_sys::sqlite3_get_autocommit(self.__db.db) != 0
+        };
+
+        if is_outermost {
+            self.__db.execute_batch("BEGIN IMMEDIATE").map_err(sqlitex::errors::Error::from)?;
+        } else {
+            self.__db.execute_batch("SAVEPOINT sqlitex_tx").map_err(sqlitex::errors::Error::from)?;
+        }
 
         let result = f(self);
 
         match result {
             Ok(val) => {
-                if let Err(e) = self.__db.execute_batch("COMMIT") {
-                    return Err(sqlitex::errors::Error::from(e));
+                if is_outermost {
+                    if let Err(e) = self.__db.execute_batch("COMMIT") {
+                        return Err(sqlitex::errors::Error::from(e));
+                    }
+                } else {
+                    if let Err(e) = self.__db.execute_batch("RELEASE SAVEPOINT sqlitex_tx") {
+                        return Err(sqlitex::errors::Error::from(e));
+                    }
                 }
                 Ok(val)
             }
             Err(e) => {
-                // Attempt rollback, ignoring failure since we are already erroring
-                let _ = self.__db.execute_batch("ROLLBACK");
+                if is_outermost {
+                    let _ = self.__db.execute_batch("ROLLBACK");
+                } else {
+                    // Rollback the savepoint, then release it to pop it off the stack
+                    let _ = self.__db.execute_batch("ROLLBACK TO SAVEPOINT sqlitex_tx");
+                    let _ = self.__db.execute_batch("RELEASE SAVEPOINT sqlitex_tx");
+                }
                 Err(e)
             }
         }
     }
+        //     pub fn transaction_immediate<T, F>(&mut self, f: F) -> Result<T, sqlitex::errors::Error>
+        // where
+        //     F: FnOnce(&mut Self) -> Result<T, sqlitex::errors::Error>,
+        // {
+        //     self.__db.execute_batch("BEGIN IMMEDIATE")
+        //         .map_err(sqlitex::errors::Error::from)?;
 
-    //     pub fn transaction_immediate<T, F>(&mut self, f: F) -> Result<T, sqlitex::errors::Error>
-    // where
-    //     F: FnOnce(&mut Self) -> Result<T, sqlitex::errors::Error>,
-    // {
-    //     self.__db.execute_batch("BEGIN IMMEDIATE")
-    //         .map_err(sqlitex::errors::Error::from)?;
+        //     let result = f(self);
 
-    //     let result = f(self);
+        //     match result {
+        //         Ok(val) => {
+        //             if let Err(e) = self.__db.execute_batch("COMMIT") {
+        //                 return Err(sqlitex::errors::Error::from(e));
+        //             }
+        //             Ok(val)
+        //         }
+        //         Err(e) => {
+        //             // Attempt rollback, ignoring failure since we are already erroring
+        //             let _ = self.__db.execute_batch("ROLLBACK");
+        //             Err(e)
+        //         }
+        //     }
+        // }
 
-    //     match result {
-    //         Ok(val) => {
-    //             if let Err(e) = self.__db.execute_batch("COMMIT") {
-    //                 return Err(sqlitex::errors::Error::from(e));
-    //             }
-    //             Ok(val)
-    //         }
-    //         Err(e) => {
-    //             // Attempt rollback, ignoring failure since we are already erroring
-    //             let _ = self.__db.execute_batch("ROLLBACK");
-    //             Err(e)
-    //         }
-    //     }
-    // }
-
-                #schema_init_method
-                #(#generated_methods)*
+                    #schema_init_method
+                    #(#generated_methods)*
+                }
             }
-        }
 
-        pub use #mod_name::#struct_name;
-    })
+            pub use #mod_name::#struct_name;
+        })
 }
 
 fn parse_sql_macro_type(ty: &Type) -> syn::Result<Option<LitStr>> {

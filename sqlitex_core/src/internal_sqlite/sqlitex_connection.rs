@@ -1,7 +1,7 @@
 use libsqlite3_sys::{
     self as ffi, SQLITE_DONE, SQLITE_ERROR, SQLITE_OK, SQLITE_OPEN_CREATE, SQLITE_OPEN_MEMORY,
     SQLITE_OPEN_READWRITE, sqlite3, sqlite3_busy_timeout, sqlite3_changes, sqlite3_column_count,
-    sqlite3_column_name, sqlite3_exec, sqlite3_finalize, sqlite3_step,
+    sqlite3_column_name, sqlite3_exec, sqlite3_finalize, sqlite3_get_autocommit, sqlite3_step,
 };
 use std::{
     ffi::{CStr, CString, c_int},
@@ -155,7 +155,6 @@ impl Connection {
         Ok(())
     }
 
-
     /// Executes a runtime `SELECT` query and returns the resulting rows.
     ///
     /// This method is intended for read operations and returns a [`DynamicRows`]
@@ -275,23 +274,45 @@ impl Connection {
     where
         F: FnOnce(&Self) -> Result<T, Error>,
     {
-        self.execute_batch("BEGIN IMMEDIATE").map_err(Error::from)?;
+        // Check if we are the outermost transaction
+        let is_outermost = unsafe { sqlite3_get_autocommit(self.db) != 0 };
+
+        if is_outermost {
+            self.execute_batch("BEGIN IMMEDIATE").map_err(Error::from)?;
+        } else {
+            self.execute_batch("SAVEPOINT sqlitex_runtime_tx")
+                .map_err(Error::from)?;
+        }
 
         let result = f(self);
 
         match result {
             Ok(val) => {
-                if let Err(e) = self.execute_batch("COMMIT") {
-                    return Err(Error::from(e));
+                if is_outermost {
+                    if let Err(e) = self.execute_batch("COMMIT") {
+                        let _ = self.execute_batch("ROLLBACK");
+
+                        return Err(Error::from(e));
+                    }
+                } else {
+                    if let Err(e) = self.execute_batch("RELEASE SAVEPOINT sqlitex_runtime_tx") {
+                        return Err(Error::from(e));
+                    }
                 }
                 Ok(val)
             }
             Err(e) => {
-                let _ = self.execute_batch("ROLLBACK");
+                if is_outermost {
+                    let _ = self.execute_batch("ROLLBACK");
+                } else {
+                    let _ = self.execute_batch("ROLLBACK TO SAVEPOINT sqlitex_runtime_tx");
+                    let _ = self.execute_batch("RELEASE SAVEPOINT sqlitex_runtime_tx");
+                }
                 Err(e)
             }
         }
     }
+
     // pub fn transaction_immediate<T, F>(&self, f: F) -> Result<T, Error>
     // where
     //     F: FnOnce(&Self) -> Result<T, Error>,
