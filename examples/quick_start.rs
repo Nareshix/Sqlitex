@@ -1,8 +1,11 @@
 use sqlitex::{Connection, sqlitex};
 
-// Alternatively,
-//#[sqlitex("path/to/db.sql")] to point to a .sql file with create table statements.
-//#[sqlitex("path/to/existing.db")] to point to an existing database file.
+
+// The examples and docs would uses inline schema (#[sqlitex] with no args) to keep things self-contained.
+// For real projects, prefer pointing to an external file instead as it is more flexible:
+//   #[sqlitex("schema.sql")]      — point to a .sql file with CREATE TABLE statements
+//   #[sqlitex("existing.db")]     — point to an existing database file
+// See: https://docs.rs/sqlitex/latest/sqlitex/#connection-methods
 #[sqlitex]
 struct AppDatabase {
     // all create tables must be at the top before read/write logic in order to get compile time checks
