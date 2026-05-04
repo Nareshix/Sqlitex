@@ -184,6 +184,34 @@ fn expand(
         }
     }
 
+    let mut open_connected_db_method = quote! {};
+
+    if let Some(path) = db_path_lit {
+        let db_path = path.value();
+        let is_db_file = db_path.ends_with(".db")
+            || db_path.ends_with(".sqlite")
+            || db_path.ends_with(".sqlite3")
+            || db_path.ends_with(".db3")
+            || db_path.ends_with(".s3db")
+            || db_path.ends_with(".sl3");
+
+        if is_db_file {
+            let file_name = std::path::Path::new(&db_path)
+                .file_name()
+                .and_then(|f| f.to_str())
+                .unwrap_or(&db_path);
+
+            let doc_msg = format!("Opens a connection to `{}`", file_name);
+
+            open_connected_db_method = quote! {
+                #[doc = #doc_msg]
+                pub fn open_connected_db() -> Result<Self, sqlitex::errors::connection::SqliteOpenErrors> {
+                    let conn = sqlitex::internal_sqlite::sqlitex_connection::Connection::open(#path)?;
+                    Ok(Self::new(conn))
+                }
+            };
+        }
+    }
     let struct_name = &item_struct.ident;
 
     let fields = match &mut item_struct.fields {
@@ -928,7 +956,7 @@ db.transaction(|tx| {
                 #item_struct
 
                 impl #impl_generics #struct_name #ty_generics #where_clause {
-                        pub fn new(
+                pub fn new(
                     db: impl Into<std::sync::Arc<sqlitex::internal_sqlite::sqlitex_connection::Connection>>,
                     #(#standard_params),*
                 ) -> Self {
@@ -1006,6 +1034,7 @@ db.transaction(|tx| {
         //         }
         //     }
         // }
+                    #open_connected_db_method
 
                     #schema_init_method
                     #(#generated_methods)*
