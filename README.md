@@ -9,7 +9,7 @@ Sqlitex is a sqlite library for rust which aims to be simple and powerful. It of
   - Automatically applies optimal PRAGMA settings for performance and reliability
 
 
-## TOC
+## Overview
 
 - [Quickstart](#quickstart)
 - [Feature Showcase](#feature-showcase)
