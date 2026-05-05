@@ -2,6 +2,8 @@
 Cargo.lock
 *.db
 *.sqlite
+*.db-shm
+*.db-wal
 
 # exceptions
 !examples/connection_via_db_file/test.db
