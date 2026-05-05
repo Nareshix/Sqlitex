@@ -6,5 +6,7 @@ license.workspace = true
 description = "type inference for sqlitex"
 
 [dependencies]
-pretty_assertions = "1.4.1"
 sqlparser = {version = "0.59.0", features = ["visitor"]}
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
