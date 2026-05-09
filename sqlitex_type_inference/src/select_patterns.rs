@@ -19,6 +19,22 @@ pub fn get_types_from_select(
     sql: &str,
     all_tables: &HashMap<String, Vec<ColumnInfo>>,
 ) -> Result<Vec<ColumnInfo>, String> {
+    match get_types_from_select_internal(sql, all_tables) {
+        Ok(res) => Ok(res),
+        Err(e) => {
+            if let Ok((qusql_cols, _)) = crate::run_qusql_fallback(sql, all_tables) {
+                Ok(qusql_cols)
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
+fn get_types_from_select_internal(
+    sql: &str,
+    all_tables: &HashMap<String, Vec<ColumnInfo>>,
+) -> Result<Vec<ColumnInfo>, String> {
     let dialect = SQLiteDialect {};
     let sql = pg_cast_syntax_to_sqlite(sql);
     let ast = Parser::parse_sql(&dialect, &sql).map_err(|e| e.to_string())?;

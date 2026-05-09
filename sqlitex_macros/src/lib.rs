@@ -430,7 +430,12 @@ fn expand(
                         BaseType::Bool => quote! { bool },
                         BaseType::Text => quote! { &str },
                         BaseType::Blob => quote! { &[u8] },
-                        _ => quote! {},
+                        _ => {
+                            return Err(syn::Error::new(
+                                sql_lit.span(),
+                                "Unable to infer type for `?`. Consider casting with `::` or `CAST AS`",
+                            ));
+                        }
                     };
 
                     let final_type = if bind_type.nullable {
@@ -489,7 +494,12 @@ fn expand(
                         BaseType::Bool => quote! { bool },
                         BaseType::Text => quote! { String },
                         BaseType::Blob => quote! { Vec<u8> },
-                        _ => quote! {},
+                        _ => {
+                            return Err(syn::Error::new(
+                                sql_lit.span(),
+                                "Unable to infer type for `?`. Consider casting with `::` or `CAST AS`",
+                            ));
+                        }
                     };
 
                     let owned_final_type = if bind_type.nullable {
@@ -670,7 +680,12 @@ db.{}_bulk(&bulk)?;
                         BaseType::Text => quote! { String },
                         BaseType::Blob => quote! { Vec<u8> },
                         BaseType::Bool => quote! { bool },
-                        _ => quote! {},
+                        _ => {
+                            return Err(syn::Error::new(
+                                sql_lit.span(),
+                                "Unable to infer return type for this expression. Consider casting with `::` or `CAST AS`",
+                            ));
+                        }
                     };
 
                     let final_ty = if col.data_type.nullable {
@@ -739,7 +754,12 @@ db.{}_bulk(&bulk)?;
                         BaseType::Text => quote! { String },
                         BaseType::Blob => quote! { Vec<u8> },
                         BaseType::Bool => quote! { bool },
-                        _ => quote! {},
+                        _ => {
+                            return Err(syn::Error::new(
+                                sql_lit.span(),
+                                "Unable to infer return type for this expression. Consider casting with `::` or `CAST AS`",
+                            ));
+                        }
                     };
 
                     let final_ty = if col.data_type.nullable {
@@ -771,7 +791,12 @@ db.{}_bulk(&bulk)?;
                         BaseType::Bool => quote! { bool },
                         BaseType::Text => quote! { &str },
                         BaseType::Blob => quote! { &[u8] },
-                        _ => quote! {},
+                        _ => {
+                            return Err(syn::Error::new(
+                                sql_lit.span(),
+                                "Unable to infer type for `?`. Consider casting with `::` or `CAST AS`",
+                            ));
+                        }
                     };
 
                     let final_type = if bind_type.nullable {
