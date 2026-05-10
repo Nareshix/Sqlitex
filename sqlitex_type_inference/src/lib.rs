@@ -2,13 +2,27 @@ use std::collections::{HashMap, HashSet};
 
 use crate::expr::{BaseType, sqlite_datatype_to_base_type};
 use crate::table::{ColumnInfo, normalize_identifier};
-use sqlparser::ast::{ColumnOption, ColumnOptionDef, DataType, Expr, Value, Visit, Visitor};
-use sqlparser::{ast::Statement, dialect::SQLiteDialect, parser::Parser};
+use qusql_type::{
+    Issues, SQLArguments, SQLDialect, StatementType, TypeOptions, schema::parse_schemas,
+    type_statement,
+};
+use sqlparser::ast::{BinaryOperator, Expr};
+use sqlparser::ast::{ColumnOption, ColumnOptionDef, DataType, Value, Visit, Visitor};
+use sqlparser::ast::{GroupByExpr, SelectItem, SetExpr, Statement};
+use sqlparser::{dialect::SQLiteDialect, parser::Parser};
+
 use std::ops::ControlFlow;
 pub mod binding_patterns;
 pub mod expr;
 pub mod select_patterns;
 pub mod table;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum QueryCardinality {
+    MaybeMany,
+    ZeroOrOne,  // WHERE unique/pk col = ?, or LIMIT 1
+    ExactlyOne, // Aggregate (COUNT/SUM/AVG/etc.) without GROUP BY
+}
 
 struct CastChecker {
     error: Option<String>,
@@ -374,22 +388,24 @@ pub fn run_qusql_fallback(
     sql: &str,
     all_tables: &std::collections::HashMap<String, Vec<crate::table::ColumnInfo>>,
 ) -> Result<(Vec<crate::table::ColumnInfo>, Vec<crate::expr::Type>), String> {
-    use qusql_type::{schema::parse_schemas, type_statement, TypeOptions, SQLDialect, SQLArguments, StatementType, Issues};
     let mut ddl = String::new();
     for (table_name, cols) in all_tables {
         ddl.push_str(&format!("CREATE TABLE {} (\n", table_name));
-        let col_defs: Vec<String> = cols.iter().map(|c| {
-            let t = match c.data_type.base_type {
-                crate::expr::BaseType::Integer => "INTEGER",
-                crate::expr::BaseType::Real => "REAL",
-                crate::expr::BaseType::Text => "TEXT",
-                crate::expr::BaseType::Blob => "BLOB",
-                crate::expr::BaseType::Bool => "BOOLEAN",
-                _ => "TEXT",
-            };
-            let nn = if c.data_type.nullable { "" } else { "NOT NULL" };
-            format!("{} {} {}", c.name, t, nn)
-        }).collect();
+        let col_defs: Vec<String> = cols
+            .iter()
+            .map(|c| {
+                let t = match c.data_type.base_type {
+                    crate::expr::BaseType::Integer => "INTEGER",
+                    crate::expr::BaseType::Real => "REAL",
+                    crate::expr::BaseType::Text => "TEXT",
+                    crate::expr::BaseType::Blob => "BLOB",
+                    crate::expr::BaseType::Bool => "BOOLEAN",
+                    _ => "TEXT",
+                };
+                let nn = if c.data_type.nullable { "" } else { "NOT NULL" };
+                format!("{} {} {}", c.name, t, nn)
+            })
+            .collect();
         ddl.push_str(&col_defs.join(",\n"));
         ddl.push_str("\n);\n");
     }
@@ -409,13 +425,31 @@ pub fn run_qusql_fallback(
 
     let map_type = |ft: &qusql_type::FullType| -> crate::expr::Type {
         let type_str = ft.to_string().to_lowercase();
-        let base = if type_str.contains("int") || type_str.contains("i8") || type_str.contains("i16") || type_str.contains("i32") || type_str.contains("i64") || type_str.contains("u8") || type_str.contains("u16") || type_str.contains("u32") || type_str.contains("u64") {
+        let base = if type_str.contains("int")
+            || type_str.contains("i8")
+            || type_str.contains("i16")
+            || type_str.contains("i32")
+            || type_str.contains("i64")
+            || type_str.contains("u8")
+            || type_str.contains("u16")
+            || type_str.contains("u32")
+            || type_str.contains("u64")
+        {
             crate::expr::BaseType::Integer
-        } else if type_str.contains("float") || type_str.contains("double") || type_str.contains("real") || type_str.contains("f32") || type_str.contains("f64") {
+        } else if type_str.contains("float")
+            || type_str.contains("double")
+            || type_str.contains("real")
+            || type_str.contains("f32")
+            || type_str.contains("f64")
+        {
             crate::expr::BaseType::Real
         } else if type_str.contains("bool") {
             crate::expr::BaseType::Bool
-        } else if type_str.contains("blob") || type_str.contains("byte") || type_str.contains("binary") || type_str.contains("geometry") {
+        } else if type_str.contains("blob")
+            || type_str.contains("byte")
+            || type_str.contains("binary")
+            || type_str.contains("geometry")
+        {
             crate::expr::BaseType::Blob
         } else if type_str.contains("any") {
             crate::expr::BaseType::Unknowns
@@ -431,38 +465,241 @@ pub fn run_qusql_fallback(
 
     match stmt_type {
         StatementType::Select { columns, arguments } => {
-            let cols = columns.into_iter().enumerate().map(|(i, c)| {
-                let mut mapped = map_type(&c.type_);
-                let name = c.name.as_ref().map(|id| id.to_string()).unwrap_or_else(|| format!("col_{}", i));
+            let cols = columns
+                .into_iter()
+                .enumerate()
+                .map(|(i, c)| {
+                    let mut mapped = map_type(&c.type_);
+                    let name = c
+                        .name
+                        .as_ref()
+                        .map(|id| id.to_string())
+                        .unwrap_or_else(|| format!("col_{}", i));
 
-                if mapped.base_type == crate::expr::BaseType::Integer {
-                    for tcols in all_tables.values() {
-                        if let Some(custom) = tcols.iter().find(|tc| tc.name == name)
-                            && custom.data_type.base_type == crate::expr::BaseType::Bool {
+                    if mapped.base_type == crate::expr::BaseType::Integer {
+                        for tcols in all_tables.values() {
+                            if let Some(custom) = tcols.iter().find(|tc| tc.name == name)
+                                && custom.data_type.base_type == crate::expr::BaseType::Bool
+                            {
                                 mapped.base_type = crate::expr::BaseType::Bool;
                                 break;
                             }
+                        }
                     }
-                }
-                crate::table::ColumnInfo {
-                    name,
-                    data_type: mapped,
-                    has_default: false,
-                }
-            }).collect();
+                    ColumnInfo {
+                        name,
+                        data_type: mapped,
+                        has_default: false,
+                        is_unique: false,
+                    }
+                })
+                .collect();
             let args = arguments.iter().map(|(_, ft)| map_type(ft)).collect();
             Ok((cols, args))
-        },
-        StatementType::Insert { arguments, .. } |
-        StatementType::Replace { arguments, .. } |
-        StatementType::Update { arguments, .. } |
-        StatementType::Delete { arguments, .. } |
-        StatementType::Call { arguments, .. } => {
-            Ok((vec![], arguments.iter().map(|(_, ft)| map_type(ft)).collect()))
-        },
-        _ => Ok((vec![], vec![]))
+        }
+        StatementType::Insert { arguments, .. }
+        | StatementType::Replace { arguments, .. }
+        | StatementType::Update { arguments, .. }
+        | StatementType::Delete { arguments, .. }
+        | StatementType::Call { arguments, .. } => Ok((
+            vec![],
+            arguments.iter().map(|(_, ft)| map_type(ft)).collect(),
+        )),
+        _ => Ok((vec![], vec![])),
     }
 }
 
+pub fn detect_query_cardinality(
+    sql: &str,
+    all_tables: &HashMap<String, Vec<ColumnInfo>>,
+) -> QueryCardinality {
+    let Ok(ast) = Parser::parse_sql(&SQLiteDialect {}, sql) else {
+        return QueryCardinality::MaybeMany;
+    };
 
+    let Statement::Query(query) = &ast[0] else {
+        return QueryCardinality::MaybeMany;
+    };
 
+    // LIMIT 1 → ZeroOrOne
+    if let Some(sqlparser::ast::LimitClause::LimitOffset {
+        limit: Some(limit_expr),
+        ..
+    }) = &query.limit_clause
+        && matches!(
+            limit_expr,
+            Expr::Value(v) if matches!(&v.value, Value::Number(n, _) if n == "1")
+        )
+    {
+        return QueryCardinality::ZeroOrOne;
+    }
+
+    let SetExpr::Select(select) = &*query.body else {
+        return QueryCardinality::MaybeMany;
+    };
+
+    // Aggregate without GROUP BY → ExactlyOne
+    let has_group_by = match &select.group_by {
+        GroupByExpr::Expressions(exprs, _) => !exprs.is_empty(),
+        GroupByExpr::All(_) => true,
+    };
+
+    // Aggregates without GROUP BY are ExactlyOne ONLY IF there is no LIMIT clause.
+    if !has_group_by && query.limit_clause.is_none() {
+        const ALWAYS_ONE_AGGREGATES: &[&str] =
+            &["COUNT", "SUM", "AVG", "MIN", "MAX", "TOTAL", "GROUP_CONCAT"];
+
+        let all_are_aggregates = !select.projection.is_empty()
+            && select.projection.iter().all(|item| {
+                let expr = match item {
+                    SelectItem::UnnamedExpr(e) | SelectItem::ExprWithAlias { expr: e, .. } => e,
+                    _ => return false,
+                };
+                if let Expr::Function(f) = expr {
+                    let name = f.name.to_string().to_uppercase();
+                    ALWAYS_ONE_AGGREGATES.contains(&name.as_str())
+                } else {
+                    false
+                }
+            });
+
+        if all_are_aggregates {
+            return QueryCardinality::ExactlyOne;
+        }
+    }
+
+    // Ensure there are no JOINs or multiple tables before assuming ZeroOrOne for unique lookups.
+    let has_joins_or_multiple_tables =
+        select.from.len() > 1 || select.from.iter().any(|t| !t.joins.is_empty());
+
+    if !has_joins_or_multiple_tables {
+        // WHERE unique_col = ? (no OR breaking the guarantee) → ZeroOrOne
+        if let Some(selection) = &select.selection {
+            // Collect table names in scope for this SELECT
+            let table_names: Vec<String> = select
+                .from
+                .iter()
+                .filter_map(|t| {
+                    if let sqlparser::ast::TableFactor::Table { name, alias, .. } = &t.relation {
+                        let real = name
+                            .0
+                            .last()
+                            .map(normalize_identifier_from_part)
+                            .unwrap_or_default();
+                        Some(if let Some(a) = alias {
+                            a.name.value.to_lowercase()
+                        } else {
+                            real
+                        })
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            if has_unique_equality_where(selection, &table_names, all_tables) {
+                return QueryCardinality::ZeroOrOne;
+            }
+        }
+    }
+
+    // Fallback: If it's not a unique lookup or guaranteed aggregate, it can return many rows.
+    QueryCardinality::MaybeMany
+}
+
+fn normalize_identifier_from_part(part: &sqlparser::ast::ObjectNamePart) -> String {
+    match part {
+        sqlparser::ast::ObjectNamePart::Identifier(ident) => ident.value.to_lowercase(),
+        _ => part.to_string(),
+    }
+}
+
+/// Returns true if the WHERE expression contains an equality check on a
+/// PRIMARY KEY or UNIQUE column, without any OR that would break the guarantee.
+fn has_unique_equality_where(
+    expr: &sqlparser::ast::Expr,
+    table_names: &[String],
+    all_tables: &HashMap<String, Vec<ColumnInfo>>,
+) -> bool {
+    match expr {
+        Expr::BinaryOp {
+            left,
+            op: BinaryOperator::Eq,
+            right,
+        } => {
+            // col = ? or col = 1 or ? = col
+            let col_side = if is_placeholder_or_literal(right) {
+                Some(left.as_ref())
+            } else if is_placeholder_or_literal(left) {
+                Some(right.as_ref())
+            } else {
+                None
+            };
+
+            if let Some(col_expr) = col_side {
+                return column_is_unique(col_expr, table_names, all_tables);
+            }
+            false
+        }
+        // AND is fine — if one branch is unique equality, the whole thing is ZeroOrOne
+        Expr::BinaryOp {
+            left,
+            op: BinaryOperator::And,
+            right,
+        } => {
+            has_unique_equality_where(left, table_names, all_tables)
+                || has_unique_equality_where(right, table_names, all_tables)
+        }
+        Expr::Nested(inner) => has_unique_equality_where(inner, table_names, all_tables),
+        // OR breaks the uniqueness guarantee
+        _ => false,
+    }
+}
+
+fn is_placeholder_or_literal(expr: &sqlparser::ast::Expr) -> bool {
+    match expr {
+        sqlparser::ast::Expr::Value(_) => true,
+        sqlparser::ast::Expr::UnaryOp { op: sqlparser::ast::UnaryOperator::Minus, expr: inner } => {
+            matches!(**inner, sqlparser::ast::Expr::Value(_))
+        }
+        sqlparser::ast::Expr::UnaryOp { op: sqlparser::ast::UnaryOperator::Plus, expr: inner } => {
+            matches!(**inner, sqlparser::ast::Expr::Value(_))
+        }
+        _ => false,
+    }
+}
+
+fn column_is_unique(
+    expr: &sqlparser::ast::Expr,
+    table_names: &[String],
+    all_tables: &HashMap<String, Vec<ColumnInfo>>,
+) -> bool {
+    let (table_hint, col_name) = match expr {
+        sqlparser::ast::Expr::Identifier(ident) => (None, ident.value.to_lowercase()),
+        sqlparser::ast::Expr::CompoundIdentifier(idents) if idents.len() >= 2 => {
+            let tbl = idents[idents.len() - 2].value.to_lowercase();
+            let col = idents[idents.len() - 1].value.to_lowercase();
+            (Some(tbl), col)
+        }
+        _ => return false,
+    };
+
+    if let Some(tbl) = table_hint {
+        return all_tables
+            .get(&tbl)
+            .and_then(|cols| cols.iter().find(|c| c.name == col_name))
+            .map(|c| c.is_unique)
+            .unwrap_or(false);
+    }
+
+    // No table qualifier — search all tables in scope
+    let matches: Vec<bool> = table_names
+        .iter()
+        .filter_map(|t| all_tables.get(t))
+        .flat_map(|cols| cols.iter())
+        .filter(|c| c.name == col_name)
+        .map(|c| c.is_unique)
+        .collect();
+
+    matches.len() == 1 && matches[0]
+}

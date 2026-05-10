@@ -72,3 +72,10 @@ pub enum Error {
     #[error(transparent)]
     Db(#[from] SqliteFailure), // Needed for Transaction BEGIN/COMMIT failures
 }
+
+
+impl From<connection::SqlitePrepareErrors> for Error {
+    fn from(e: connection::SqlitePrepareErrors) -> Self {
+        Error::Read(SqlReadError::Prepare(e))
+    }
+}
