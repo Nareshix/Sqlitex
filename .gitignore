@@ -4,6 +4,14 @@ Cargo.lock
 *.sqlite
 *.db-shm
 *.db-wal
+docs/dist/
+docs/.astro/
+docs/node_modules/
+docs/.env
+docs/.env.production
+
+
 
 # exceptions
 !examples/connection_via_db_file/test.db
+
