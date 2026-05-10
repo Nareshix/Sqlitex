@@ -171,6 +171,58 @@ impl SqliteHandle {
     }
 }
 
+pub fn get_db_schema_from_sql_string(sql: &str) -> Result<Vec<String>, String> {
+    let handle = SqliteHandle::open_memory()?;
+    unsafe {
+        let c_sql = CString::new(sql).map_err(|_| "SQL contains illegal null bytes".to_string())?;
+        let mut err_msg: *mut c_char = ptr::null_mut();
+        let exec_rc = sqlite3_exec(handle.db, c_sql.as_ptr(), None, ptr::null_mut(), &mut err_msg);
+
+        if exec_rc != SQLITE_OK {
+            let msg = if !err_msg.is_null() {
+                let m = CStr::from_ptr(err_msg).to_string_lossy().into_owned();
+                sqlite3_free(err_msg as *mut c_void);
+                m
+            } else {
+                "Unknown error".to_string()
+            };
+            return Err(format!("Error evaluating migrations script: {}", msg));
+        }
+
+        let query = b"SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name\0";
+        let mut stmt = ptr::null_mut();
+        let prepare_rc = sqlite3_prepare_v2(
+            handle.db,
+            query.as_ptr() as *const c_char,
+            -1,
+            &mut stmt,
+            ptr::null_mut(),
+        );
+
+        if prepare_rc != SQLITE_OK {
+            let (_, msg) = get_sqlite_failiure(handle.db);
+            return Err(msg);
+        }
+
+        struct StmtGuard(*mut sqlite3_stmt);
+        impl Drop for StmtGuard {
+            fn drop(&mut self) {
+                unsafe { sqlite3_finalize(self.0); }
+            }
+        }
+        let _guard = StmtGuard(stmt);
+
+        let mut results = Vec::new();
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            let sql_ptr = sqlite3_column_text(stmt, 1);
+            if !sql_ptr.is_null() {
+                results.push(CStr::from_ptr(sql_ptr as *const c_char).to_string_lossy().into_owned());
+            }
+        }
+        Ok(results)
+    }
+}
+
 pub fn get_db_schema(db_path: &str) -> Result<Vec<String>, String> {
     let handle = SqliteHandle::open(db_path)?;
 
