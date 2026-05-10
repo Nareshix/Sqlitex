@@ -54,6 +54,22 @@ pub fn get_type_of_binding_parameters(
     sql: &str,
     all_tables: &HashMap<String, Vec<ColumnInfo>>,
 ) -> Result<Vec<Type>, InferenceError> {
+    match get_type_of_binding_parameters_internal(sql, all_tables) {
+        Ok(res) => Ok(res),
+        Err(e) => {
+            if let Ok((_, qusql_args)) = crate::run_qusql_fallback(sql, all_tables) {
+                Ok(qusql_args)
+            } else {
+                Err(e)
+            }
+        }
+    }
+}
+
+fn get_type_of_binding_parameters_internal(
+    sql: &str,
+    all_tables: &HashMap<String, Vec<ColumnInfo>>,
+) -> Result<Vec<Type>, InferenceError> {
     let ast = Parser::parse_sql(&SQLiteDialect {}, sql).map_err(|e| InferenceError {
         start: Location { line: 1, column: 1 },
         end: Location { line: 1, column: 1 },
@@ -107,7 +123,7 @@ pub fn get_type_of_binding_parameters(
             table,
             limit,
             from,
-            or,
+            or: _,
         } => {
             let table_name = match &table.relation {
                 sqlparser::ast::TableFactor::Table { name, .. } => {

@@ -369,3 +369,100 @@ pub fn validate_sql_file_syntax(sql: &str) -> Result<(), String> {
         .map_err(|e| format!("Invalid SQL syntax in schema file: {}", e))?;
     Ok(())
 }
+
+pub fn run_qusql_fallback(
+    sql: &str,
+    all_tables: &std::collections::HashMap<String, Vec<crate::table::ColumnInfo>>,
+) -> Result<(Vec<crate::table::ColumnInfo>, Vec<crate::expr::Type>), String> {
+    use qusql_type::{schema::parse_schemas, type_statement, TypeOptions, SQLDialect, SQLArguments, StatementType, Issues};
+    let mut ddl = String::new();
+    for (table_name, cols) in all_tables {
+        ddl.push_str(&format!("CREATE TABLE {} (\n", table_name));
+        let col_defs: Vec<String> = cols.iter().map(|c| {
+            let t = match c.data_type.base_type {
+                crate::expr::BaseType::Integer => "INTEGER",
+                crate::expr::BaseType::Real => "REAL",
+                crate::expr::BaseType::Text => "TEXT",
+                crate::expr::BaseType::Blob => "BLOB",
+                crate::expr::BaseType::Bool => "BOOLEAN",
+                _ => "TEXT",
+            };
+            let nn = if c.data_type.nullable { "" } else { "NOT NULL" };
+            format!("{} {} {}", c.name, t, nn)
+        }).collect();
+        ddl.push_str(&col_defs.join(",\n"));
+        ddl.push_str("\n);\n");
+    }
+
+    let opts = TypeOptions::new()
+        .dialect(SQLDialect::Sqlite)
+        .arguments(SQLArguments::QuestionMark);
+    let mut schema_issues = Issues::new(&ddl);
+    let schemas = parse_schemas(&ddl, &mut schema_issues, &opts);
+
+    let mut query_issues = Issues::new(sql);
+    let stmt_type = type_statement(&schemas, sql, &mut query_issues, &opts);
+
+    if !query_issues.is_ok() {
+        return Err(format!("Qusql failed:\n{}", query_issues));
+    }
+
+    let map_type = |ft: &qusql_type::FullType| -> crate::expr::Type {
+        let type_str = ft.to_string().to_lowercase();
+        let base = if type_str.contains("int") || type_str.contains("i8") || type_str.contains("i16") || type_str.contains("i32") || type_str.contains("i64") || type_str.contains("u8") || type_str.contains("u16") || type_str.contains("u32") || type_str.contains("u64") {
+            crate::expr::BaseType::Integer
+        } else if type_str.contains("float") || type_str.contains("double") || type_str.contains("real") || type_str.contains("f32") || type_str.contains("f64") {
+            crate::expr::BaseType::Real
+        } else if type_str.contains("bool") {
+            crate::expr::BaseType::Bool
+        } else if type_str.contains("blob") || type_str.contains("byte") || type_str.contains("binary") || type_str.contains("geometry") {
+            crate::expr::BaseType::Blob
+        } else if type_str.contains("any") {
+            crate::expr::BaseType::Unknowns
+        } else {
+            crate::expr::BaseType::Text
+        };
+        crate::expr::Type {
+            base_type: base,
+            nullable: !ft.not_null,
+            contains_placeholder: false,
+        }
+    };
+
+    match stmt_type {
+        StatementType::Select { columns, arguments } => {
+            let cols = columns.into_iter().enumerate().map(|(i, c)| {
+                let mut mapped = map_type(&c.type_);
+                let name = c.name.as_ref().map(|id| id.to_string()).unwrap_or_else(|| format!("col_{}", i));
+
+                if mapped.base_type == crate::expr::BaseType::Integer {
+                    for tcols in all_tables.values() {
+                        if let Some(custom) = tcols.iter().find(|tc| tc.name == name)
+                            && custom.data_type.base_type == crate::expr::BaseType::Bool {
+                                mapped.base_type = crate::expr::BaseType::Bool;
+                                break;
+                            }
+                    }
+                }
+                crate::table::ColumnInfo {
+                    name,
+                    data_type: mapped,
+                    has_default: false,
+                }
+            }).collect();
+            let args = arguments.iter().map(|(_, ft)| map_type(ft)).collect();
+            Ok((cols, args))
+        },
+        StatementType::Insert { arguments, .. } |
+        StatementType::Replace { arguments, .. } |
+        StatementType::Update { arguments, .. } |
+        StatementType::Delete { arguments, .. } |
+        StatementType::Call { arguments, .. } => {
+            Ok((vec![], arguments.iter().map(|(_, ft)| map_type(ft)).collect()))
+        },
+        _ => Ok((vec![], vec![]))
+    }
+}
+
+
+
