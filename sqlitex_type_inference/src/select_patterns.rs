@@ -142,6 +142,7 @@ fn process_returning_clause(
                     name: normalize_identifier(alias),
                     data_type: t,
                     has_default: false,
+    is_unique: false,
                 });
             }
             // RETURNING id
@@ -162,6 +163,7 @@ fn process_returning_clause(
                     name,
                     data_type: t,
                     has_default: false,
+    is_unique: false,
                 });
             }
             // RETURNING *
@@ -267,6 +269,7 @@ pub fn traverse_select_output(
                             name: normalize_identifier(alias),
                             data_type: t,
                             has_default: false,
+    is_unique: false,
                         });
                     }
                     SelectItem::UnnamedExpr(expr) => {
@@ -288,6 +291,7 @@ pub fn traverse_select_output(
                             name,
                             data_type: t,
                             has_default: false,
+    is_unique: false,
                         });
                     }
                     SelectItem::Wildcard(_) => {
@@ -366,6 +370,7 @@ pub fn traverse_select_output(
                     name: format!("col_{}", i),
                     data_type: t,
                     has_default: false,
+    is_unique: false,
                 });
             }
 

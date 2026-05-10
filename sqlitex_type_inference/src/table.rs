@@ -14,6 +14,7 @@ pub struct ColumnInfo {
     pub name: String,
     pub data_type: Type,
     pub has_default: bool,
+    pub is_unique: bool,
 }
 
 pub fn normalize_identifier(ident: &sqlparser::ast::Ident) -> String {
@@ -100,39 +101,41 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
                     let mut nullable = true;
                     let mut is_detected_boolean = false;
                     let mut is_default = false;
-
+                    let mut is_unique = false;
                     // check if type is strictly INTEGER (not INT)
                     let is_strictly_integer =
                         col.data_type.to_string().eq_ignore_ascii_case("INTEGER");
 
                     for option_def in &col.options {
                         match &option_def.option {
-                            ColumnOption::Check(expr)
-
-                                if is_boolean_constraint(expr) => {
-                                    is_detected_boolean = true;
-                                }
+                            ColumnOption::Check(expr) if is_boolean_constraint(expr) => {
+                                is_detected_boolean = true;
+                            }
                             ColumnOption::NotNull => {
                                 nullable = false;
                             }
                             ColumnOption::Unique {
                                 is_primary: true, ..
                             }
-                                // "INTEGER PRIMARY KEY" is an alias for ROWID (auto-increment)
-                                // UNLESS the table is declared WITHOUT ROWID.
-                                if is_strictly_integer && !without_rowid => {
-                                    is_default = true;
-                                }
-                            ColumnOption::Default(_) => is_default = true,
+                            // "INTEGER PRIMARY KEY" is an alias for ROWID (auto-increment)
+                            // UNLESS the table is declared WITHOUT ROWID.
+                            if is_strictly_integer && !without_rowid => {
+                                is_default = true;
+                                is_unique = true;
+                            }
+                            ColumnOption::Unique { .. } => {
+                                is_unique = true;
+                            }
 
+                            ColumnOption::Default(_) => is_default = true,
                             // Check for explicit AUTOINCREMENT token
                             ColumnOption::DialectSpecific(tokens)
                                 if tokens
                                     .iter()
-                                    .any(|t| t.to_string().to_uppercase() == "AUTOINCREMENT")
-                                => {
-                                    is_default = true;
-                                }
+                                    .any(|t| t.to_string().to_uppercase() == "AUTOINCREMENT") =>
+                            {
+                                is_default = true;
+                            }
                             _ => {}
                         }
                     }
@@ -151,6 +154,7 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
                             contains_placeholder: false,
                         },
                         has_default: is_default,
+                        is_unique,
                     }
                 })
                 .collect();

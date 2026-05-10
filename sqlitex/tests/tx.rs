@@ -42,7 +42,7 @@ mod nested_tests {
             Ok(())
         })?;
 
-        let count = db.count()?.first()?.unwrap().count;
+        let count = db.count()?;
         assert_eq!(count, 1);
         Ok(())
     }
@@ -60,7 +60,7 @@ mod nested_tests {
             Ok(())
         })?;
 
-        let count = db.count()?.first()?.unwrap().count;
+        let count = db.count()?;
         assert_eq!(count, 3);
         Ok(())
     }
@@ -82,7 +82,7 @@ mod nested_tests {
             Ok(())
         })?;
 
-        let count = db.count()?.first()?.unwrap().count;
+        let count = db.count()?;
         assert_eq!(count, 1);
         Ok(())
     }
@@ -100,7 +100,7 @@ mod nested_tests {
             Ok(())
         })?;
 
-        let count = db.count()?.first()?.unwrap().count;
+        let count = db.count()?;
         assert_eq!(count, 2);
         Ok(())
     }
@@ -125,7 +125,7 @@ mod nested_tests {
             Ok(())
         })?;
 
-        let count = db.count()?.first()?.unwrap().count;
+        let count = db.count()?;
         assert_eq!(count, 5);
         Ok(())
     }
