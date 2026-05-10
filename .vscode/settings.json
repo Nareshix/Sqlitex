@@ -1,0 +1,12 @@
+{
+  "githubIssues.queries": [
+    {
+      "label": "Recent Issues",
+      "query": "state:open repo:${owner}/${repository} sort:updated-desc"
+    },
+    {
+      "label": "0.4.0",
+      "query": "state:open repo:${owner}/${repository} sort:updated-desc label:0.4.0"
+    }
+  ]
+}
