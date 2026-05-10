@@ -27,7 +27,7 @@ fn check_binding_types(sql: &str, expected: Vec<BaseType>) {
     let tables = setup_tables();
     let binding_parameter_result = get_type_of_binding_parameters(sql, &tables);
 
-  let binding_parameter: Vec<_> = binding_parameter_result
+    let binding_parameter: Vec<_> = binding_parameter_result
         .unwrap()
         .iter()
         .map(|t| t.data_type.base_type)
