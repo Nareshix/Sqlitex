@@ -1,6 +1,6 @@
-use crate::expr::{evaluate_expr_type, BaseType, Type};
+use crate::expr::{BaseType, Type, evaluate_expr_type};
 use crate::pg_cast_syntax_to_sqlite;
-use crate::table::{get_table_names, normalize_identifier, normalize_part, ColumnInfo};
+use crate::table::{ColumnInfo, get_table_names, normalize_identifier, normalize_part};
 use sqlparser::ast::{
     BinaryOperator, DataType, Expr, FunctionArg, FunctionArgExpr, FunctionArguments, SetExpr,
     Spanned, Statement,
@@ -250,7 +250,14 @@ fn get_type_of_binding_parameters_internal(
                 for from_table in from_tables {
                     match &from_table.relation {
                         sqlparser::ast::TableFactor::TableFunction { expr, .. } => {
-                            traverse_expr(expr, &table_names, all_tables, &mut results, None, None)?;
+                            traverse_expr(
+                                expr,
+                                &table_names,
+                                all_tables,
+                                &mut results,
+                                None,
+                                None,
+                            )?;
                         }
                         sqlparser::ast::TableFactor::Derived { subquery, .. } => {
                             traverse_query(subquery, &table_names, all_tables, &mut results)?;
@@ -340,10 +347,8 @@ fn get_type_of_binding_parameters_internal(
                         for row in &values.rows {
                             for (idx, expr) in row.iter().enumerate() {
                                 let hint = expected_types.get(idx).cloned().flatten();
-                                let col_name_hint = insert_node
-                                    .columns
-                                    .get(idx)
-                                    .map(|ident| normalize_identifier(ident));
+                                let col_name_hint =
+                                    insert_node.columns.get(idx).map(normalize_identifier);
                                 traverse_expr(
                                     expr,
                                     &table_names,
@@ -365,10 +370,8 @@ fn get_type_of_binding_parameters_internal(
                     SetExpr::Select(select) => {
                         for (idx, item) in select.projection.iter().enumerate() {
                             let hint = expected_types.get(idx).cloned().flatten();
-                            let col_name_hint = insert_node
-                                .columns
-                                .get(idx)
-                                .map(|ident| normalize_identifier(ident));
+                            let col_name_hint =
+                                insert_node.columns.get(idx).map(normalize_identifier);
                             match item {
                                 sqlparser::ast::SelectItem::UnnamedExpr(expr)
                                 | sqlparser::ast::SelectItem::ExprWithAlias { expr, .. } => {
@@ -742,9 +745,14 @@ fn traverse_expr(
             Ok(())
         }
 
-        Expr::Nested(inner) => {
-            traverse_expr(inner, table_names, all_tables, results, parent_hint, name_hint)
-        }
+        Expr::Nested(inner) => traverse_expr(
+            inner,
+            table_names,
+            all_tables,
+            results,
+            parent_hint,
+            name_hint,
+        ),
 
         Expr::InList {
             expr: match_expr,
@@ -850,14 +858,7 @@ fn traverse_expr(
                 context.clone(),
                 hint_name.clone(),
             )?;
-            traverse_expr(
-                high,
-                table_names,
-                all_tables,
-                results,
-                context,
-                hint_name,
-            )?;
+            traverse_expr(high, table_names, all_tables, results, context, hint_name)?;
             Ok(())
         }
 
