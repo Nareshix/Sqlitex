@@ -172,7 +172,7 @@ if path_obj.is_dir() || db_path.ends_with('/') {
                     .chars()
                     .take_while(|c| c.is_ascii_digit())
                     .collect();
-                num_str.parse::<i32>().unwrap_or(std::i32::MAX)
+                num_str.parse::<i32>().unwrap_or(i32::MAX)
             });
 
             // We will store the file_name and content to pass to sqlite3_exec
