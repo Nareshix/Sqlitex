@@ -230,22 +230,73 @@ pub fn get_db_schema_from_statements(scripts: &[(String, String)]) -> Result<Vec
             let c_sql = CString::new(sql.as_str())
                 .map_err(|_| format!("File '{}' contains illegal null bytes", filename))?;
 
-            let mut err_msg: *mut c_char = ptr::null_mut();
-            let exec_rc = ffi::sqlite3_exec(handle.db, c_sql.as_ptr(), None, ptr::null_mut(), &mut err_msg);
+            // We start our pointer at the beginning of the SQL string
+            let mut pz_tail = c_sql.as_ptr();
 
-            if exec_rc != ffi::SQLITE_OK {
-                let msg = if !err_msg.is_null() {
-                    let m = CStr::from_ptr(err_msg).to_string_lossy().into_owned();
-                    ffi::sqlite3_free(err_msg as *mut c_void);
-                    m
-                } else {
-                    "Unknown error".to_string()
-                };
-                // THIS is where we inject the exact file name!
-                return Err(format!("In file '{}': {}", filename, msg));
+            // Iterate through the file, statement by statement
+            while *pz_tail != 0 {
+                let z_sql = pz_tail;
+                let mut stmt: *mut ffi::sqlite3_stmt = ptr::null_mut();
+
+                // Parse the next statement. pz_tail is advanced to the start of the NEXT statement.
+                let prepare_rc = ffi::sqlite3_prepare_v2(
+                    handle.db,
+                    z_sql,
+                    -1,
+                    &mut stmt,
+                    &mut pz_tail,
+                );
+
+                // --- Calculate Line Number ---
+                // Find how many bytes into the string we are
+                let byte_offset = (z_sql as usize).saturating_sub(c_sql.as_ptr() as usize);
+
+                // Ensure we don't slice inside a multi-byte UTF-8 character
+                let mut safe_offset = byte_offset.min(sql.len());
+                while safe_offset > 0 && !sql.is_char_boundary(safe_offset) {
+                    safe_offset -= 1;
+                }
+
+                // Count the newlines up to this point
+                let line_number = sql[..safe_offset].matches('\n').count() + 1;
+                // -----------------------------
+
+                // If parsing failed (Syntax Error)
+                if prepare_rc != ffi::SQLITE_OK {
+                    let (_, msg) = get_sqlite_failiure(handle.db);
+                    if !stmt.is_null() {
+                        ffi::sqlite3_finalize(stmt);
+                    }
+                    return Err(format!("In file '{}' at line {}: {}", filename, line_number, msg));
+                }
+
+                // If the statement is empty (e.g. trailing whitespace or comments)
+                if stmt.is_null() {
+                    continue;
+                }
+
+                // Execute the statement
+                loop {
+                    let step_rc = ffi::sqlite3_step(stmt);
+
+                    if step_rc == ffi::SQLITE_DONE || step_rc == ffi::SQLITE_ROW {
+                        if step_rc == ffi::SQLITE_DONE {
+                            break; // Statement executed successfully
+                        }
+                    } else {
+                        // Execution failed! (e.g. UNIQUE constraint failed)
+                        let (_, msg) = get_sqlite_failiure(handle.db);
+                        ffi::sqlite3_finalize(stmt);
+                        return Err(format!("In file '{}' at line {}: {}", filename, line_number, msg));
+                    }
+                }
+
+                // Free the statement before moving to the next one
+                ffi::sqlite3_finalize(stmt);
             }
         }
 
+        // Now that all scripts ran successfully, extract the schema
         let query = b"SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name\0";
         let mut stmt = ptr::null_mut();
         let prepare_rc = ffi::sqlite3_prepare_v2(
