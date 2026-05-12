@@ -24,9 +24,14 @@ pub enum MigrationError {
     /// To protect database integrity, `sqlitex` refuses to boot if a migration
     /// file's checksum has changed after it was already applied.
     #[error(
-        "Integrity Error: Migration {version} ({name}) was altered after being applied to the database!"
+        "Integrity Error: Migration {version} ({name}) was altered! Expected checksum {expected_checksum}, but found {actual_checksum}."
     )]
-    ChecksumMismatch { version: i64, name: String },
+    ChecksumMismatch {
+        version: i64,
+        name: String,
+        expected_checksum: i64,
+        actual_checksum: i64,
+    },
 
     #[error(
         "Integrity Error: Migration {version} was renamed from '{expected_name}' to '{actual_name}' after being applied!"

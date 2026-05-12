@@ -309,6 +309,8 @@ fn expand(
                                                         sqlitex::errors::MigrationError::ChecksumMismatch {
                                                             version: db_version,
                                                             name: db_name,
+                                                            expected_checksum: db_checksum,
+                                                            actual_checksum: *disk_checksum,
                                                         }
                                                     ));
                                                 }
