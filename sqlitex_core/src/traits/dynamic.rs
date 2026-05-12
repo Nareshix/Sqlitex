@@ -14,8 +14,7 @@ impl Value {
             Value::Integer(i) => i.to_string(),
             Value::Real(f) => f.to_string(),
             Value::Text(s) => s.clone(),
-            //  TODO: some conversion dont make sense
-            Value::Blob(_) => "<Binary Data>".to_string(),
+            Value::Blob(b) => String::from_utf8_lossy(b).into_owned(),
             Value::Null => "NULL".to_string(),
         }
     }
@@ -65,11 +64,12 @@ impl Value {
         matches!(self, Value::Null)
     }
 
-    // TODO, review again
-    /// Returns the value as a byte slice
+    /// Returns the value as a byte slice.
+    /// Note: This will return an empty slice for non-blob types.
     pub fn as_bytes(&self) -> &[u8] {
         match self {
             Value::Blob(b) => b,
+            Value::Text(s) => s.as_bytes(),
             _ => &[],
         }
     }

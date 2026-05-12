@@ -56,7 +56,6 @@ pub unsafe fn get_sqlite_failiure(db: *mut sqlite3) -> (i32, String) {
 ///
 /// - db must be a valid sqlite3 connection which is not NULL
 pub unsafe fn close_db(db: *mut sqlite3) {
-    // TODO returns SQLITE_BUSY. but dpeending on the strucurre of my code dont have to deal with it
     // also sqlite3_close_v2 is only for gc languages hence sqlite3_close is preferred
     unsafe { ffi::sqlite3_close(db) };
 }
@@ -68,11 +67,11 @@ pub unsafe fn prepare_stmt(
     stmt: &mut *mut sqlite3_stmt,
     sql: &str,
 ) -> Result<(), SqlitePrepareErrors> {
-    let c_sql_query = CString::new(sql).unwrap(); //TODO
+    let c_sql_query = CString::new(sql)
+        .map_err(|_| SqlitePrepareErrors::EmbeddedNullInSql)?;
     let code =
         unsafe { ffi::sqlite3_prepare_v2(db, c_sql_query.as_ptr(), -1, stmt, ptr::null_mut()) };
 
-    // TODO. In your macro, MUST make sure that the sql is not empty, no pure whitepaces and is not purely a comment
     if code != SQLITE_OK {
         let (code, error_msg) = unsafe { get_sqlite_failiure(db) };
         return Err(SqlitePrepareErrors::SqliteFailure { code, error_msg });

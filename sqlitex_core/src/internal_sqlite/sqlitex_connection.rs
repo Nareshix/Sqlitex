@@ -81,7 +81,8 @@ impl Connection {
 
     fn open_with_flags(filename: &str, flag: c_int) -> Result<Arc<Self>, SqliteOpenErrors> {
         let mut db = ptr::null_mut();
-        let c_filename = CString::new(filename).unwrap(); //TODO
+        let c_filename = CString::new(filename)
+            .map_err(|_| SqliteOpenErrors::EmbeddedNullInFileName)?;
 
         let code = unsafe { ffi::sqlite3_open_v2(c_filename.as_ptr(), &mut db, flag, ptr::null()) };
 

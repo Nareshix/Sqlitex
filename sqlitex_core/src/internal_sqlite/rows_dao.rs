@@ -15,7 +15,7 @@ pub struct Rows<'a, M: RowMapper> {
 }
 
 impl<'a, M: RowMapper> Iterator for Rows<'a, M> {
-    // The Output refers to the original struct predefined by user (TODO, better explanation)
+    // The Output refers to the original struct predefined by user
     type Item = Result<M::Output, RowMapperError>;
 
     fn next(&mut self) -> Option<Self::Item> {
