@@ -379,11 +379,24 @@ pub fn rewrite_bool_columns(sql: &str) -> Result<String, String> {
 }
 
 pub fn validate_sql_file_syntax(sql: &str) -> Result<(), String> {
-    Parser::parse_sql(&SQLiteDialect {}, sql)
-        .map_err(|e| format!("Invalid SQL syntax in schema file: {}", e))?;
+    let ast = Parser::parse_sql(&SQLiteDialect {}, sql)
+        .map_err(|e| format!("Invalid SQL syntax: {}", e))?;
+
+    for stmt in ast {
+        match stmt {
+            Statement::StartTransaction { .. }
+            | Statement::Commit { .. }
+            | Statement::Rollback { .. }
+            | Statement::Savepoint { .. }
+            | Statement::ReleaseSavepoint { .. } => {
+                return Err("Explicit transaction control (BEGIN/COMMIT/ROLLBACK/SAVEPOINT) is not allowed in migrations. sqlitex handles transactions atomically for you.".to_string());
+            }
+            _ => {}
+        }
+    }
+
     Ok(())
 }
-
 pub fn run_qusql_fallback(
     sql: &str,
     all_tables: &std::collections::HashMap<String, Vec<crate::table::ColumnInfo>>,

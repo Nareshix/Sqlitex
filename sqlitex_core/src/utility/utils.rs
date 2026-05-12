@@ -171,6 +171,117 @@ impl SqliteHandle {
     }
 }
 
+pub fn get_db_schema_from_statements(scripts: &[(String, String)]) -> Result<Vec<String>, String> {
+    let handle = SqliteHandle::open_memory()?;
+
+    struct StmtGuard(*mut ffi::sqlite3_stmt);
+    impl Drop for StmtGuard {
+        fn drop(&mut self) {
+            if !self.0.is_null() {
+                unsafe {
+                    ffi::sqlite3_finalize(self.0);
+                }
+            }
+        }
+    }
+
+    for (filename, sql) in scripts {
+        let c_sql = CString::new(sql.as_str())
+            .map_err(|_| format!("File '{}' contains illegal null bytes", filename))?;
+
+        // start our pointer at the beginning of the SQL string
+        let mut pz_tail = c_sql.as_ptr();
+
+        // Iterate through the file, statement by statement
+        while unsafe { *pz_tail } != 0 {
+            let z_sql = pz_tail;
+            let mut raw_stmt: *mut ffi::sqlite3_stmt = ptr::null_mut();
+
+            // Parse the next statement. pz_tail is advanced to the start of the NEXT statement.
+            let prepare_rc = unsafe {
+                ffi::sqlite3_prepare_v2(handle.db, z_sql, -1, &mut raw_stmt, &mut pz_tail)
+            };
+
+            // Wrap immediately in RAII guard so it ALWAYS gets finalized, even on panic/early return
+            let stmt = StmtGuard(raw_stmt);
+
+            // Calculate Line Number
+            // Find how many bytes into the string we are
+            let byte_offset = (z_sql as usize).saturating_sub(c_sql.as_ptr() as usize);
+
+            // Ensure we don't slice inside a multi-byte UTF-8 character
+            let mut safe_offset = byte_offset.min(sql.len());
+            while safe_offset > 0 && !sql.is_char_boundary(safe_offset) {
+                safe_offset -= 1;
+            }
+            // Count the newlines up to this point
+            let line_number = sql[..safe_offset].matches('\n').count() + 1;
+
+            if prepare_rc != ffi::SQLITE_OK {
+                let (_, msg) = unsafe { get_sqlite_failiure(handle.db) };
+                return Err(format!(
+                    "In file '{}' at line {}: {}",
+                    filename, line_number, msg
+                ));
+            }
+
+            // If the statement is empty (e.g. trailing whitespace or comments)
+            if stmt.0.is_null() {
+                continue;
+            }
+
+            loop {
+                let step_rc = unsafe { ffi::sqlite3_step(stmt.0) };
+
+                if step_rc == ffi::SQLITE_DONE {
+                    break;
+                } else if step_rc != ffi::SQLITE_ROW {
+                    let (_, msg) = unsafe { get_sqlite_failiure(handle.db) };
+                    return Err(format!(
+                        "In file '{}' at line {}: {}",
+                        filename, line_number, msg
+                    ));
+                }
+            }
+        }
+    }
+
+    let query = b"SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name\0";
+    let mut raw_stmt = ptr::null_mut();
+
+    unsafe {
+        if ffi::sqlite3_prepare_v2(
+            handle.db,
+            query.as_ptr() as *const c_char,
+            -1,
+            &mut raw_stmt,
+            ptr::null_mut(),
+        ) != ffi::SQLITE_OK
+        {
+            let (_, msg) = get_sqlite_failiure(handle.db);
+            return Err(msg);
+        }
+    }
+
+    let stmt = StmtGuard(raw_stmt);
+    let mut results = Vec::new();
+
+    unsafe {
+        while ffi::sqlite3_step(stmt.0) == ffi::SQLITE_ROW {
+            let sql_ptr = ffi::sqlite3_column_text(stmt.0, 1);
+            if !sql_ptr.is_null() {
+                results.push(
+                    CStr::from_ptr(sql_ptr as *const c_char)
+                        .to_string_lossy()
+                        .into_owned(),
+                );
+            }
+        }
+    }
+
+    Ok(results)
+}
+
 pub fn get_db_schema(db_path: &str) -> Result<Vec<String>, String> {
     let handle = SqliteHandle::open(db_path)?;
 

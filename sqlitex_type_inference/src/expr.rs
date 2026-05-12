@@ -118,19 +118,6 @@ pub fn evaluate_expr_type(
                 })
         }
 
-        // Expr::CompoundFieldAccess {..}
-        // Expr::JsonAccess {..}
-        // Expr::TypedString(_) -- TODO
-        // Expr::GroupingSets() TODO
-        // Expr::Cube() TODO
-        // Expr::Rollup() TODO
-        // Expr::Struct { _ }
-        // Expr::Wildcard() --handled in select_pattern.rs
-        // Expr::QualifiedWildcard(, ) --handled in select_pattern.rs
-        // Expr::OuterJoin() --handled in creation of table
-        // Expr::Prior() TODO
-        // Expr::MemberOf() json specifc TODO
-        // Compound
         Expr::Tuple(exprs) => {
             if let Some(first) = exprs.first() {
                 evaluate_expr_type(first, table_names_from_select, all_tables)
@@ -259,9 +246,7 @@ pub fn evaluate_expr_type(
             base_type: BaseType::Bool,
             nullable: false,
             contains_placeholder: false,
-        }), // TODO placeholder
-        // TODO Exists can be null, but usually they are subquerys
-
+        }),
         // SELECT... WHERE id in (?,?,...)
         Expr::InList { expr, list, .. } => {
             let lhs = evaluate_expr_type(expr, table_names_from_select, all_tables)?;
@@ -469,7 +454,6 @@ pub fn evaluate_expr_type(
                     contains_placeholder: false,
                 }),
 
-                // TODO REGEXP. it is sqlite specific
                 _ => Err(format!("invalid {expr}")),
             }
         }
@@ -536,13 +520,6 @@ pub fn evaluate_expr_type(
 
         // ? category
         // Expr::Overlay { .. }
-        // Expr::Collate { } TODO
-
-        // Datetime
-        // Expr::AtTimeZone {..}  TODO
-
-        // Expr::Extract {.. }   TODO use strftime() instead
-        // Expr::Position { .. } TODO use instr
 
         // Functions
         Expr::Function(func) => {
@@ -599,7 +576,7 @@ pub fn evaluate_expr_type(
 
             match name.as_str() {
                 // ---- core sqlite section --------
-                // https://sqlite.org/lang_corefunc.html TODO: not all of it is implemented
+                // https://sqlite.org/lang_corefunc.html, not all of it is covered. fallback relys on qusql
                 "COUNT" => Ok(Type {
                     base_type: BaseType::Integer,
                     nullable: false,
@@ -787,7 +764,7 @@ pub fn evaluate_expr_type(
                 // Value Functions (Offset)
                 // LEAD/LAG return the type of the expression being tracked.
                 // They return NULL if the offset is out of bounds (unless default is provided).
-                // Since we can't easily check the default value type here, nullable: true is safest. TODO
+                // Since we can't easily check the default value type here, nullable: true is safest.
                 "LEAD" | "LAG" | "FIRST_VALUE" | "LAST_VALUE" | "NTH_VALUE" => Ok(Type {
                     base_type: input_type.base_type, // Inferred from the 1st argument
                     nullable: true,

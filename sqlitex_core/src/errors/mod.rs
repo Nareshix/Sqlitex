@@ -15,6 +15,36 @@ pub struct SqliteFailure {
     pub error_msg: String,
 }
 
+
+
+#[derive(thiserror::Error, Debug)]
+pub enum MigrationError {
+    /// A previously applied migration file has been modified.
+    ///
+    /// To protect database integrity, `sqlitex` refuses to boot if a migration
+    /// file's checksum has changed after it was already applied.
+    #[error(
+        "Integrity Error: Migration {version} ({name}) was altered! Expected checksum {expected_checksum}, but found {actual_checksum}."
+    )]
+    ChecksumMismatch {
+        version: i64,
+        name: String,
+        expected_checksum: i64,
+        actual_checksum: i64,
+    },
+
+    #[error(
+        "Integrity Error: Migration {version} was renamed from '{expected_name}' to '{actual_name}' after being applied!"
+    )]
+    NameMismatch { version: i64, expected_name: String, actual_name: String },
+
+    #[error(
+        "Integrity Error: Migration {version} ({name}) is missing from the directory but was previously applied to the database!"
+    )]
+    MissingFile { version: i64, name: String },
+}
+
+
 #[derive(thiserror::Error, Debug)]
 pub enum SqlWriteError {
     #[error("Failed to prepare statement: {0}")]
@@ -71,6 +101,9 @@ pub enum Error {
 
     #[error(transparent)]
     Db(#[from] SqliteFailure), // Needed for Transaction BEGIN/COMMIT failures
+
+    #[error(transparent)]
+    Migration(#[from] MigrationError),
 }
 
 impl From<connection::SqlitePrepareErrors> for Error {
