@@ -285,26 +285,46 @@ fn expand(
                             );"
                                     )?;
 
-                                    let mut applied_migrations = std::collections::HashMap::new();
-                                    if let Ok(rows) = tx.__db.query("SELECT version, checksum FROM _sqlitex_migrations") {
+                                    let mut applied_versions = std::collections::HashSet::new();
+                                    if let Ok(rows) = tx.__db.query("SELECT version, name, checksum FROM _sqlitex_migrations ORDER BY version ASC") {
                                         for row in rows.all()? {
-                                            applied_migrations.insert(row[0].as_i64(), row[1].as_i64());
+                                            let db_version = row[0].as_i64();
+                                            let db_name = row[1].as_string();
+                                            let db_checksum = row[2].as_i64();
+
+                                            applied_versions.insert(db_version);
+
+                                            if let Some((_, disk_name, disk_checksum, _)) = migrations.iter().find(|m| m.0 == db_version) {
+                                                if db_name != *disk_name {
+                                                    return Err(sqlitex::errors::Error::Migration(
+                                                        sqlitex::errors::MigrationError::NameMismatch {
+                                                            version: db_version,
+                                                            expected_name: db_name,
+                                                            actual_name: disk_name.to_string(),
+                                                        }
+                                                    ));
+                                                }
+                                                if db_checksum != *disk_checksum {
+                                                    return Err(sqlitex::errors::Error::Migration(
+                                                        sqlitex::errors::MigrationError::ChecksumMismatch {
+                                                            version: db_version,
+                                                            name: db_name,
+                                                        }
+                                                    ));
+                                                }
+                                            } else {
+                                                return Err(sqlitex::errors::Error::Migration(
+                                                    sqlitex::errors::MigrationError::MissingFile {
+                                                        version: db_version,
+                                                        name: db_name,
+                                                    }
+                                                ));
+                                            }
                                         }
                                     }
 
                                     for (version, name, checksum, sql) in migrations {
-                                        if let Some(applied_checksum) = applied_migrations.get(&version) {
-                                            // If it has been applied, verify the checksum!
-                                            if *applied_checksum != checksum {
-                                                return Err(sqlitex::errors::Error::Migration(
-                                                    sqlitex::errors::MigrationError::ChecksumMismatch {
-                                                        version: version,
-                                                        name: name.to_string(),
-                                                    }
-                                                ));
-
-                                            }
-                                        } else {
+                                        if !applied_versions.contains(&version) {
                                             // If it hasn't been applied, run it!
                                             tx.__db.execute_batch(sql)?;
 

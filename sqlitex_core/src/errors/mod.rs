@@ -27,6 +27,16 @@ pub enum MigrationError {
         "Integrity Error: Migration {version} ({name}) was altered after being applied to the database!"
     )]
     ChecksumMismatch { version: i64, name: String },
+
+    #[error(
+        "Integrity Error: Migration {version} was renamed from '{expected_name}' to '{actual_name}' after being applied!"
+    )]
+    NameMismatch { version: i64, expected_name: String, actual_name: String },
+
+    #[error(
+        "Integrity Error: Migration {version} ({name}) is missing from the directory but was previously applied to the database!"
+    )]
+    MissingFile { version: i64, name: String },
 }
 
 
