@@ -191,6 +191,10 @@ impl Connection {
                 SqlitePrepareErrors::SqliteFailure { code, error_msg } => {
                     SqliteFailure { code, error_msg }
                 }
+                SqlitePrepareErrors::EmbeddedNullInSql => SqliteFailure {
+                    code: SQLITE_ERROR,
+                    error_msg: "SQL statement contains a null byte".into(),
+                },
             })?;
 
             let count = sqlite3_column_count(stmt);
@@ -204,7 +208,6 @@ impl Connection {
             Ok(DynamicRows::new(stmt, self.db, column_names))
         }
     }
-
     /// Executes a runtime SQL statement that modifies the database.
     ///
     /// This method is intended for write operations such as
@@ -240,6 +243,10 @@ impl Connection {
                 SqlitePrepareErrors::SqliteFailure { code, error_msg } => {
                     SqliteFailure { code, error_msg }
                 }
+                SqlitePrepareErrors::EmbeddedNullInSql => SqliteFailure {
+                    code: SQLITE_ERROR,
+                    error_msg: "SQL statement contains a null byte".into(),
+                },
             })?;
 
             let result = sqlite3_step(stmt);
@@ -255,7 +262,6 @@ impl Connection {
             }
         }
     }
-
     /// Executes multiple database operations inside a single transaction.
     ///
     /// If the closure returns `Ok`, the transaction is committed.
