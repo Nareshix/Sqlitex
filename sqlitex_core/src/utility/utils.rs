@@ -67,8 +67,8 @@ pub unsafe fn prepare_stmt(
     stmt: &mut *mut sqlite3_stmt,
     sql: &str,
 ) -> Result<(), SqlitePrepareErrors> {
-    let c_sql_query = CString::new(sql)
-        .map_err(|_| SqlitePrepareErrors::EmbeddedNullInSql)?;
+    let c_sql_query =
+        CString::new(sql).expect("SQL statement or filename should not contain null bytes"); // will never fail, but still good to add the expect
     let code =
         unsafe { ffi::sqlite3_prepare_v2(db, c_sql_query.as_ptr(), -1, stmt, ptr::null_mut()) };
 

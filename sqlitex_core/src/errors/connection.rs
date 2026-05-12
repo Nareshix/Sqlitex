@@ -23,8 +23,4 @@ pub enum SqlitePrepareErrors {
     /// A general SQLite error returned during statement compilation.
     #[error("SQLite error {code}: {error_msg}")]
     SqliteFailure { code: c_int, error_msg: String },
-
-    /// The provided SQL string contains a null byte, which is invalid for C strings.
-    #[error("Make sure that there is no Null byte in sql statement")]
-    EmbeddedNullInSql,
 }

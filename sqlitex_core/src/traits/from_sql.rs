@@ -1,4 +1,4 @@
-use std::ffi::CStr;
+use std::slice;
 
 use libsqlite3_sys::{SQLITE_NULL, sqlite3_column_type, sqlite3_stmt};
 
@@ -12,13 +12,18 @@ pub trait FromSql {
 
 impl FromSql for String {
     unsafe fn from_sql(stmt: *mut sqlite3_stmt, index: i32) -> Self {
-        let c_string = unsafe { libsqlite3_sys::sqlite3_column_text(stmt, index) } as *const i8;
+        // Order is important. Force the type then find the size.
+        // https://sqlite.org/c3ref/column_blob.html
+        let text = unsafe { libsqlite3_sys::sqlite3_column_text(stmt, index) };
+        let bytes_len = unsafe { libsqlite3_sys::sqlite3_column_bytes(stmt, index) };
 
-        if c_string.is_null() {
+        if text.is_null() {
             return String::new();
         }
 
-        unsafe { CStr::from_ptr(c_string).to_string_lossy().into_owned() }
+        let slice = unsafe { slice::from_raw_parts(text, bytes_len as usize) };
+
+        String::from_utf8_lossy(slice).into_owned()
     }
 }
 
@@ -67,6 +72,8 @@ impl<T: FromSql> FromSql for Option<T> {
 
 impl FromSql for Vec<u8> {
     unsafe fn from_sql(stmt: *mut sqlite3_stmt, index: i32) -> Self {
+        // Order is important. Force the type then find the size.
+        // https://sqlite.org/c3ref/column_blob.html
         let ptr = unsafe { libsqlite3_sys::sqlite3_column_blob(stmt, index) };
         let bytes = unsafe { libsqlite3_sys::sqlite3_column_bytes(stmt, index) };
 

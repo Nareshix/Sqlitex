@@ -81,8 +81,8 @@ impl Connection {
 
     fn open_with_flags(filename: &str, flag: c_int) -> Result<Arc<Self>, SqliteOpenErrors> {
         let mut db = ptr::null_mut();
-        let c_filename = CString::new(filename)
-            .map_err(|_| SqliteOpenErrors::EmbeddedNullInFileName)?;
+        let c_filename =
+            CString::new(filename).map_err(|_| SqliteOpenErrors::EmbeddedNullInFileName)?;
 
         let code = unsafe { ffi::sqlite3_open_v2(c_filename.as_ptr(), &mut db, flag, ptr::null()) };
 
@@ -192,10 +192,6 @@ impl Connection {
                 SqlitePrepareErrors::SqliteFailure { code, error_msg } => {
                     SqliteFailure { code, error_msg }
                 }
-                SqlitePrepareErrors::EmbeddedNullInSql => SqliteFailure {
-                    code: SQLITE_ERROR,
-                    error_msg: "SQL statement contains a null byte".into(),
-                },
             })?;
 
             let count = sqlite3_column_count(stmt);
@@ -244,10 +240,6 @@ impl Connection {
                 SqlitePrepareErrors::SqliteFailure { code, error_msg } => {
                     SqliteFailure { code, error_msg }
                 }
-                SqlitePrepareErrors::EmbeddedNullInSql => SqliteFailure {
-                    code: SQLITE_ERROR,
-                    error_msg: "SQL statement contains a null byte".into(),
-                },
             })?;
 
             let result = sqlite3_step(stmt);
