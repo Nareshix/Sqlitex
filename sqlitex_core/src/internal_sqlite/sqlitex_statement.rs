@@ -6,7 +6,9 @@ pub struct SqlitexStmt {
     pub stmt: *mut sqlite3_stmt,
 }
 
+// sqlite default mode is serialized
 unsafe impl Send for SqlitexStmt {}
+unsafe impl Sync for SqlitexStmt {}
 
 impl Drop for SqlitexStmt {
     fn drop(&mut self) {

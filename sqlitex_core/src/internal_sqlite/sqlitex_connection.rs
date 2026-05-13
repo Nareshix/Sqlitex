@@ -19,7 +19,9 @@ use crate::{
     utility::utils::prepare_stmt,
 };
 
+// sqlite default mode is serialized
 unsafe impl Send for Connection {}
+unsafe impl Sync for Connection {}
 
 pub struct Connection {
     pub db: *mut sqlite3,
