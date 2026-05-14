@@ -10,27 +10,34 @@ Sqlitex is a sqlite library for rust which aims to be simple and powerful. It of
 
 ## Overview
 
-- [Quickstart](#quickstart)
-- [Feature Showcase](#feature-showcase)
-- [Connection methods](#connection-methods)
-  - [inline schema](#1-inline-schema)
-  - [.sql file](#2-sql-file)
-  - [database](#3-live-database)
-- [Query helper functions](#query-helper-functions)
-  - [Postgres :: syntax
-    ](#postgres--type-casting-syntax)
-  - [all() / first()
-    ](#all-and-first-methods-for-iterators)
-- [Advanced](#advanced)
-  - [BLOB, Transactions, Runtime options etc](#blob-transactions-runtime-options-etc)
-  - [`sql_escape_hatch!()`](#sql_escape_hatch)
-- [References](#references)
-  - [Default pragma settings](#default-pragma-settings)
-  - [Strict insert validation](#strict-insert-validation)
-  - [Supported type mappings](#supported-type-mappings)
-  - [Supported type casting](#supported-type-casting)
-  - [Row mappings for unknown column names](#row-mappings-for-unknown-column-name)
-- [Comparison with other libraries](#comparison-with-other-libraries)
+- [Sqlitex](#sqlitex)
+  - [Overview](#overview)
+  - [Quickstart](#quickstart)
+  - [Feature showcase](#feature-showcase)
+  - [Connection methods](#connection-methods)
+    - [1. Inline Schema](#1-inline-schema)
+    - [2. SQL File](#2-sql-file)
+      - [Tiny quirk with IDEs](#tiny-quirk-with-ides)
+    - [3. Live Database](#3-live-database)
+      - [Tiny quirks with IDEs](#tiny-quirks-with-ides)
+      - [4. Migrations](#4-migrations)
+  - [Query helper functions](#query-helper-functions)
+    - [Postgres `::` type casting syntax](#postgres--type-casting-syntax)
+    - [`all()` and `first()` methods for iterators](#all-and-first-methods-for-iterators)
+  - [Advanced](#advanced)
+    - [BLOB, Transactions, Runtime options etc.](#blob-transactions-runtime-options-etc)
+    - [`sql_escape_hatch!`](#sql_escape_hatch)
+      - [How to use `sql_escape_hatch!`](#how-to-use-sql_escape_hatch)
+        - [a. `SELECT` statements](#a-select-statements)
+        - [b. No Return Type](#b-no-return-type)
+    - [Why `sql_escape_hatch!` was created](#why-sql_escape_hatch-was-created)
+  - [References](#references)
+    - [Default PRAGMA Settings.](#default-pragma-settings)
+    - [Strict INSERT Validation](#strict-insert-validation)
+    - [Supported Type mappings](#supported-type-mappings)
+    - [Supported type casting](#supported-type-casting)
+    - [Row mappings for unknown column name](#row-mappings-for-unknown-column-name)
+  - [Comparison with other libraries](#comparison-with-other-libraries)
 
 ## Quickstart
 
@@ -193,6 +200,26 @@ fn main() {
 
 Same issue as connecting via a `sql` file mentioned above. If you use IDEs, rust analsyer error would usually emit `DATABASE BASE IS LOCKED`. This **does not affect** the integrity of your database during development. You would need to either type something on ur rust file or restart your rust lsp server to make the false positive to go away.
 
+#### 4. Migrations
+
+Point to a folder containing numbered `.sql` files (e.g., `01_init.sql`, `02_add_users.sql`). `sqlitex` will validate all of them at compile time and automatically generate a `migrate()` method to apply them safely and atomically at runtime.
+
+```rust
+#[sqlitex("migrations/")]
+struct App {
+    // queries...
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let conn = Connection::open("app.db")?;
+    let mut db = App::new(conn);
+
+    // Auto-generated. It is indempotent.
+    db.migrate()?;
+
+    Ok(())
+}
+```
 ## Query helper functions
 
 ### Postgres `::` type casting syntax
