@@ -8,13 +8,13 @@ members = [
 ]
 
 [workspace.package]
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 license = "MIT"
 
 
 [workspace.dependencies]
-sqlitex ={ path = "./sqlitex", version = "0.4.0"}
-sqlitex_core = { path = "./sqlitex_core", version = "0.4.0" }
-sqlitex_macros = { path = "./sqlitex_macros", version = "0.4.0" }
-sqlitex_type_inference = { path = "./sqlitex_type_inference", version = "0.4.0" }
+sqlitex ={ path = "./sqlitex", version = "0.4.1"}
+sqlitex_core = { path = "./sqlitex_core", version = "0.4.1" }
+sqlitex_macros = { path = "./sqlitex_macros", version = "0.4.1" }
+sqlitex_type_inference = { path = "./sqlitex_type_inference", version = "0.4.1" }
