@@ -51,12 +51,12 @@ impl Iterator for DynamicRows {
                         SQLITE_FLOAT => Value::Real(sqlite3_column_double(self.stmt, i)),
                         SQLITE_TEXT => {
                             let ptr = sqlite3_column_text(self.stmt, i);
+                            let bytes_len = sqlite3_column_bytes(self.stmt, i);
                             if ptr.is_null() {
                                 Value::Null
                             } else {
-                                let s = CStr::from_ptr(ptr as *const i8)
-                                    .to_string_lossy()
-                                    .into_owned();
+                                let slice = std::slice::from_raw_parts(ptr, bytes_len as usize);
+                                let s = String::from_utf8_lossy(slice).into_owned();
                                 Value::Text(s)
                             }
                         }
