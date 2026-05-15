@@ -2,6 +2,16 @@
 
 **follows `yyyy-mm-dd` format**
 
+## [0.4.2] - 2026-05-15
+
+### Perf
+Reduce binary size by moving compile-time sqlite checks to macros
+
+## [0.4.1] - 2026-05-14
+
+### Docs
+updated docs on migration
+
 ## [0.4.0] - 2026-05-14
 
 ### Features
