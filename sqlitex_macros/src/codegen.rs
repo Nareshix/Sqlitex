@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use quote::quote;
 use crate::sqlite_validation::validate_sql_syntax_with_sqlite;
+use quote::quote;
 use sqlitex_type_inference::validate_create_table_types;
 use sqlitex_type_inference::{
     QueryCardinality, binding_patterns::get_type_of_binding_parameters, detect_query_cardinality,
@@ -576,9 +576,9 @@ db.{}_bulk(&bulk)?;
                     })
                     .collect();
 
-                let output_struct_name = quote::format_ident!("{}", pascal_name);
-                let mapper_struct_name = quote::format_ident!("{}_", pascal_name);
-                let scalar_mapper_name = quote::format_ident!("{}_scalar_", ident);
+                let output_struct_name = quote::format_ident!("{}{}", struct_name, pascal_name);
+                let mapper_struct_name = quote::format_ident!("{}{}_", struct_name, pascal_name);
+                let scalar_mapper_name = quote::format_ident!("{}_{}_scalar_", struct_name, ident);
 
                 // Build the primitive type for single-col scalar path
                 let single_col_rust_type = if is_single_col {
