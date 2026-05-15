@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use quote::quote;
 use sqlitex_core::utility::utils::get_db_schema;
 use sqlitex_type_inference::{table::create_tables, validate_cast_types, validate_create_table_types};
-use syn::spanned::Spanned;
 
 pub(crate) struct SchemaSourceOutput {
     pub schema_init_method: proc_macro2::TokenStream,

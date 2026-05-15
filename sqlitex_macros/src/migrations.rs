@@ -1,10 +1,10 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use quote::quote;
 use sqlitex_type_inference::validate_create_table_types;
 use sqlitex_type_inference::{table::create_tables, validate_cast_types};
 
-use crate::fnv1a_hash;
+use crate::utils::fnv1a_hash;
 
 pub(crate) struct MigrationsOutput {
     pub schema_init_method: proc_macro2::TokenStream,
@@ -17,8 +17,8 @@ pub(crate) fn process_migrations_dir(
     db_path: &str,
 ) -> syn::Result<MigrationsOutput> {
     let mut all_tables = HashMap::new();
-    let mut watcher_tokens;
-    let mut schema_init_method;
+    let watcher_tokens;
+    let schema_init_method;
 
     let mut files: Vec<_> = std::fs::read_dir(db_path)
         .map_err(|e| {

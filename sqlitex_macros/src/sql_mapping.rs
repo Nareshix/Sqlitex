@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{Data, DeriveInput, Fields, Ident, parse_macro_input, spanned::Spanned};
+use syn::{Data, DeriveInput, Fields, Ident, parse_macro_input};
 
 pub fn expand_sql_mapping(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
