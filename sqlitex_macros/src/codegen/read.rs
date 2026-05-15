@@ -60,7 +60,7 @@ pub fn generate_read_methods(
         quote! {}
     };
 
-    if !is_single_col || cardinality == QueryCardinality::MaybeMany {
+    if !is_single_col {
         let mut struct_fields = Vec::new();
         for col in select_types.iter() {
             let name = quote::format_ident!("{}", col.name);
@@ -87,7 +87,7 @@ pub fn generate_read_methods(
         });
     }
 
-    if is_single_col && cardinality != QueryCardinality::MaybeMany {
+    if is_single_col {
         let col = &select_types[0];
         let is_nullable = col.data_type.nullable;
         let base_ty = match col.data_type.base_type {
@@ -135,7 +135,7 @@ pub fn generate_read_methods(
     };
 
     match (cardinality, is_single_col) {
-        (QueryCardinality::MaybeMany, _) => {
+        (QueryCardinality::MaybeMany, false) => {
             generated_methods.extend(quote! {
                 #(#field_attrs)*
                 #[doc = #doc_comment]
@@ -143,6 +143,17 @@ pub fn generate_read_methods(
                     #prepare_block
                     #(#bind_calls)*
                     Ok(preparred_statement.query(#output_struct_name))
+                }
+            });
+        }
+        (QueryCardinality::MaybeMany, true) => {
+            generated_methods.extend(quote! {
+                #(#field_attrs)*
+                #[doc = #doc_comment]
+                pub fn #ident(&mut self #(, #method_args)*) -> Result<sqlitex::internal_sqlite::rows_dao::Rows<'_, #scalar_mapper_name>, #ret_err_type> {
+                    #prepare_block
+                    #(#bind_calls)*
+                    Ok(preparred_statement.query(#scalar_mapper_name))
                 }
             });
         }
@@ -169,7 +180,14 @@ pub fn generate_read_methods(
                     preparred_statement.query(#output_struct_name)
                         .first()
                         .map_err(sqlitex::errors::Error::from)
-                        .map(|opt| opt.expect("aggregate query must return exactly one row"))
+                        .and_then(|opt| opt.ok_or_else(|| {
+                            sqlitex::errors::Error::Row(
+                                sqlitex::errors::row::RowMapperError::SqliteFailure {
+                                    code: sqlitex::libsqlite3_sys::SQLITE_ERROR,
+                                    error_msg: "Aggregate query returned 0 rows unexpectedly".into()
+                                }
+                            )
+                        }))
                 }
             });
         }
@@ -196,7 +214,14 @@ pub fn generate_read_methods(
                     preparred_statement.query(#scalar_mapper_name)
                         .first()
                         .map_err(sqlitex::errors::Error::from)
-                        .map(|opt| opt.expect("aggregate query must return exactly one row"))
+                        .and_then(|opt| opt.ok_or_else(|| {
+                            sqlitex::errors::Error::Row(
+                                sqlitex::errors::row::RowMapperError::SqliteFailure {
+                                    code: sqlitex::libsqlite3_sys::SQLITE_ERROR,
+                                    error_msg: "Aggregate query returned 0 rows unexpectedly".into()
+                                }
+                            )
+                        }))
                 }
             });
         }
