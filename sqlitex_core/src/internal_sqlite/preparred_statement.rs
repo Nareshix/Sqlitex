@@ -20,8 +20,8 @@ pub struct PreparredStmt {
 impl Drop for PreparredStmt {
     fn drop(&mut self) {
         unsafe {
+            // we do not clear the binding so that we can cache the stmt
             sqlite3_reset(self.stmt);
-            // sqlite3_clear_bindings(self.stmt);
         }
     }
 }
