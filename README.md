@@ -44,7 +44,7 @@ Sqlitex is a sqlite library for rust which aims to be simple and powerful. It of
 Install it via
 
 ```bash
-cargo add sqlitex@0.4.0
+cargo add sqlitex
 ```
 
 Simple usage example:
