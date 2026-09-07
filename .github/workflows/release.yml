@@ -19,16 +19,37 @@ jobs:
         with:
           fetch-depth: 0
 
+      # 1. Fetch tags so git-cliff knows release boundaries
+      - name: Fetch tags
+        run: git fetch --tags --force
+
+      # 2. Generate clean changelog without header
       - name: Generate Changelog for this release
         uses: orhun/git-cliff-action@v4
         with:
           config: cliff.toml
-          args: --latest --strip header
+          args: --current --strip header
         env:
           OUTPUT: LATEST_CHANGES.md
 
+      # 3. Add crates.io (main page) and docs.rs (0.5.3 page) separated by a newline
+      - name: Format Release Notes Header
+        run: |
+          RAW_TAG="${{ github.ref_name }}"
+          VERSION="${RAW_TAG#v}"
+          VERSION="${VERSION#sqlitex-v}"
+
+          echo "📦 [crates.io](https://crates.io/crates/sqlitex)" > FINAL_RELEASE.md
+          echo "" >> FINAL_RELEASE.md
+          echo "📖 [docs.rs](https://docs.rs/sqlitex/${VERSION}/sqlitex/)" >> FINAL_RELEASE.md
+          echo "" >> FINAL_RELEASE.md
+          echo "---" >> FINAL_RELEASE.md
+          echo "" >> FINAL_RELEASE.md
+          cat LATEST_CHANGES.md >> FINAL_RELEASE.md
+
+      # 4. Create the GitHub Release
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
-          body_path: LATEST_CHANGES.md
+          body_path: FINAL_RELEASE.md

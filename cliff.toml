@@ -2,7 +2,6 @@
 # https://git-cliff.org/docs/configuration
 
 
-# cliff.toml
 
 [changelog]
 header = """
@@ -15,7 +14,6 @@ header = """
 body = """
 {% if version %}\
     ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
-    📦 [crates.io](https://crates.io/crates/sqlitex/{{ version | trim_start_matches(pat="v") }}) | 📖 [docs.rs](https://docs.rs/sqlitex/{{ version | trim_start_matches(pat="v") }}/sqlitex/)
 {% else %}\
     ## [unreleased]
 {% endif %}\
