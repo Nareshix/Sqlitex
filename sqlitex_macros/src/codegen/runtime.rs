@@ -1,7 +1,7 @@
+use crate::codegen::context::CodegenContext;
+use crate::parse::RuntimeSqlInput;
 use proc_macro2::TokenStream;
 use quote::quote;
-use crate::parse::RuntimeSqlInput;
-use crate::codegen::context::CodegenContext;
 
 pub fn generate_runtime_method(
     ctx: &CodegenContext,
@@ -35,7 +35,7 @@ pub fn generate_runtime_method(
                     "i64", "i32", "u64", "u32", "f64", "f32", "bool", "String", "Option",
                 ];
 
-                if primitives.iter().any(|&p| type_name.starts_with(p)) {
+                if primitives.iter().any(|p| type_name == *p) {
                     quote! { #ret_type }
                 } else {
                     let new_ident = quote::format_ident!("{}_", segment.ident);
