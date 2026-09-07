@@ -16,4 +16,6 @@ sqlitex_core.workspace = true
 sqlitex_macros.workspace = true
 
 [package.metadata.release]
+tag = true
+tag-name = "v{{version}}"
 pre-release-hook = ["git-cliff", "--repository", "..", "--unreleased", "--tag", "{{version}}", "--prepend", "../CHANGELOG.md"]
