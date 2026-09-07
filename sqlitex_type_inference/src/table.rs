@@ -90,17 +90,21 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
             ..
         }) = statement
         {
-            let table_name = name.0.last().map(normalize_part).unwrap_or(name.to_string());
+            let table_name = name
+                .0
+                .last()
+                .map(normalize_part)
+                .unwrap_or(name.to_string());
 
             let mut table_unique_cols = std::collections::HashSet::new();
 
             for constraint in constraints {
                 match constraint {
                     sqlparser::ast::TableConstraint::Unique { columns, .. }
-                    | sqlparser::ast::TableConstraint::PrimaryKey { columns, .. } => {
-                        for col in columns {
-                            // FIX: Unpack the identifier from the OrderByExpr wrapper!
-                            match &col.column.expr {
+                    | sqlparser::ast::TableConstraint::PrimaryKey { columns, .. }
+                        // Only single-column constraints guarantee that this column is unique on its own
+                        if columns.len() == 1 => {
+                            match &columns[0].column.expr {
                                 sqlparser::ast::Expr::Identifier(ident) => {
                                     table_unique_cols.insert(normalize_identifier(ident));
                                 }
@@ -112,7 +116,6 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
                                 _ => {}
                             }
                         }
-                    }
                     _ => {}
                 }
             }
@@ -124,19 +127,28 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
                     let mut is_detected_boolean = false;
                     let mut is_default = false;
                     let mut is_unique = false;
-                    let is_strictly_integer = col.data_type.to_string().eq_ignore_ascii_case("INTEGER");
+                    let is_strictly_integer =
+                        col.data_type.to_string().eq_ignore_ascii_case("INTEGER");
 
                     for option_def in &col.options {
                         match &option_def.option {
-                            ColumnOption::Check(expr) if is_boolean_constraint(expr) => is_detected_boolean = true,
+                            ColumnOption::Check(expr) if is_boolean_constraint(expr) => {
+                                is_detected_boolean = true
+                            }
                             ColumnOption::NotNull => nullable = false,
-                            ColumnOption::Unique { is_primary: true, .. } if is_strictly_integer && !without_rowid => {
+                            ColumnOption::Unique {
+                                is_primary: true, ..
+                            } if is_strictly_integer && !without_rowid => {
                                 is_default = true;
                                 is_unique = true;
                             }
                             ColumnOption::Unique { .. } => is_unique = true,
                             ColumnOption::Default(_) => is_default = true,
-                            ColumnOption::DialectSpecific(tokens) if tokens.iter().any(|t| t.to_string().to_uppercase() == "AUTOINCREMENT") => {
+                            ColumnOption::DialectSpecific(tokens)
+                                if tokens
+                                    .iter()
+                                    .any(|t| t.to_string().to_uppercase() == "AUTOINCREMENT") =>
+                            {
                                 is_default = true;
                             }
                             _ => {}
@@ -156,7 +168,11 @@ pub fn create_tables(sql: &str, tables: &mut HashMap<String, Vec<ColumnInfo>>) {
 
                     ColumnInfo {
                         name: normalize_identifier(&col.name),
-                        data_type: Type { base_type, nullable, contains_placeholder: false },
+                        data_type: Type {
+                            base_type,
+                            nullable,
+                            contains_placeholder: false,
+                        },
                         has_default: is_default,
                         is_unique,
                     }
