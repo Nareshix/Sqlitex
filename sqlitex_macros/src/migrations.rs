@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use normalize_line_endings::normalized;
 use quote::quote;
 use sqlitex_type_inference::validate_create_table_types;
 use sqlitex_type_inference::{table::create_tables, validate_cast_types};
@@ -114,7 +115,8 @@ pub(crate) fn process_migrations_dir(
             const _: &[u8] = include_bytes!(#file_path_str);
         });
 
-        let checksum = fnv1a_hash(&content);
+        let normalized_content: String = normalized(content.chars()).collect();
+        let checksum = fnv1a_hash(&normalized_content);
         let checksum_tokens: proc_macro2::TokenStream = checksum.to_string().parse().unwrap();
         migration_embeds.push(quote! {
             (#version, #file_name, #checksum_tokens, include_str!(#file_path_str))
