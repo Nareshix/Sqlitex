@@ -2,6 +2,8 @@
 
 **follows `yyyy-mm-dd` format**
 
+## [0.5.2] - 2026-09-07
+📦 [crates.io](https://crates.io/crates/sqlitex/0.5.2) | 📖 [docs.rs](https://docs.rs/sqlitex/0.5.2/sqlitex/)
 ## [0.5.1] - 2026-09-07
 
 ### 🚀 Features
