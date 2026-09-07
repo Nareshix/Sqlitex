@@ -287,8 +287,8 @@ pub fn validate_sql_syntax_with_sqlite(
                     } else {
                         ""
                     };
-
-                    format!("{} {}{}", col.name, sql_type, constraint)
+                    let unique_pk = if col.is_unique { " UNIQUE" } else { "" };
+                    format!("\"{}\" {}{}{}", col.name, sql_type, constraint, unique_pk)
                 })
                 .collect();
 
