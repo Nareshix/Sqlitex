@@ -48,7 +48,7 @@ pub(crate) fn process_migrations_dir(
             .chars()
             .take_while(|c| c.is_ascii_digit())
             .collect();
-        num_str.parse::<i32>().unwrap_or(i32::MAX)
+        num_str.parse::<i64>().unwrap_or(i64::MAX)
     });
 
     // We will store the file_name and content to pass to sqlite3_exec
