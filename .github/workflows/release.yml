@@ -43,6 +43,8 @@ jobs:
           echo "" >> FINAL_RELEASE.md
           echo "📖 [docs.rs](https://docs.rs/sqlitex/${VERSION}/sqlitex/)" >> FINAL_RELEASE.md
           echo "" >> FINAL_RELEASE.md
+          echo "*Changelog is automatically generated.*" >> FINAL_RELEASE.md
+          echo "" >> FINAL_RELEASE.md
           echo "---" >> FINAL_RELEASE.md
           echo "" >> FINAL_RELEASE.md
           cat LATEST_CHANGES.md >> FINAL_RELEASE.md
