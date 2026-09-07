@@ -1,5 +1,28 @@
 # Changelog
 
+📦 [crates.io](https://crates.io/crates/sqlitex)
+📖 [docs.rs](https://docs.rs/sqlitex/latest/sqlitex/)
+
+**follows `yyyy-mm-dd` format**
+
+## [0.5.3] - 2026-09-07
+
+### 🚀 Features
+
+- *(connection)* Disable default WAL journal mode
+- Support ON CONFLICT queries (sqlite's version of UPSERT) during compile-time check
+
+### 🐛 Bug Fixes
+
+- Allow single-column queries to be used in public mod
+- Prevent custom struct names from colliding with primitive types in sql_escape_hatch
+- When connecting via sql file,  it compiles to filename rahter than hardcoded path, preventing the binary from not wroking correctly in other machines
+- Support quoted table names in compile time checks.
+- Return error instead of panicking when SQL queries contain null bytes. During compile time check it also gives a suitable error msg
+- Prevent queries on composite primary keys from truncating to one row
+- Prevent migration checksum errors across Windows and Linux
+# Changelog
+
 **follows `yyyy-mm-dd` format**
 
 ## [0.5.0] - 2026-09-07
