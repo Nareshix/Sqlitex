@@ -1,3 +1,4 @@
 [alias]
 testt = "nextest run"
 t = "nextest run"
+ship = "release --execute --no-confirm"
