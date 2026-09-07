@@ -1,7 +1,4 @@
-use libsqlite3_sys::{
-    self as ffi, SQLITE_OK, sqlite3,
-    sqlite3_errcode, sqlite3_stmt,
-};
+use libsqlite3_sys::{self as ffi, SQLITE_OK, sqlite3, sqlite3_errcode, sqlite3_stmt};
 use std::{
     ffi::{CStr, CString, c_char},
     ptr,
@@ -61,8 +58,7 @@ pub unsafe fn prepare_stmt(
     stmt: &mut *mut sqlite3_stmt,
     sql: &str,
 ) -> Result<(), SqlitePrepareErrors> {
-    let c_sql_query =
-        CString::new(sql).expect("SQL statement or filename should not contain null bytes"); // will never fail, but still good to add the expect
+    let c_sql_query = CString::new(sql).map_err(|_| SqlitePrepareErrors::EmbeddedNullInQuery)?;
     let code =
         unsafe { ffi::sqlite3_prepare_v2(db, c_sql_query.as_ptr(), -1, stmt, ptr::null_mut()) };
 

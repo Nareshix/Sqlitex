@@ -311,7 +311,13 @@ pub fn validate_sql_syntax_with_sqlite(
                 return Err(format!("Failed to recreate table schema: {}", table_name));
             }
         }
-        let c_sql = CString::new(sql).map_err(|_| "Invalid SQL string".to_string())?;
+        let c_sql = CString::new(sql).map_err(|_| {
+            "SQL statement contains an embedded null byte (`\\0`). \
+     SQLite query strings cannot contain null bytes. \
+     If you need to store or search for null bytes in data, \
+     pass them as a bind parameter using `?` instead."
+                .to_string()
+        })?;
         let mut stmt = ptr::null_mut();
 
         let prepare_rc =

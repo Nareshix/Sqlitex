@@ -23,4 +23,9 @@ pub enum SqlitePrepareErrors {
     /// A general SQLite error returned during statement compilation.
     #[error("SQLite error {code}: {error_msg}")]
     SqliteFailure { code: c_int, error_msg: String },
+
+    #[error(
+        "SQL query string contains an embedded null byte (\\0). SQLite C APIs cannot execute strings containing null bytes. Bind your data dynamically with parameters (?) instead."
+    )]
+    EmbeddedNullInQuery,
 }

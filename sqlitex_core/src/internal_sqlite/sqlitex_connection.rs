@@ -194,6 +194,10 @@ impl Connection {
                 SqlitePrepareErrors::SqliteFailure { code, error_msg } => {
                     SqliteFailure { code, error_msg }
                 }
+                SqlitePrepareErrors::EmbeddedNullInQuery => SqliteFailure {
+                    code: ffi::SQLITE_ERROR,
+                    error_msg: e.to_string(),
+                },
             })?;
 
             let count = sqlite3_column_count(stmt);
@@ -242,6 +246,10 @@ impl Connection {
                 SqlitePrepareErrors::SqliteFailure { code, error_msg } => {
                     SqliteFailure { code, error_msg }
                 }
+                SqlitePrepareErrors::EmbeddedNullInQuery => SqliteFailure {
+                    code: ffi::SQLITE_ERROR,
+                    error_msg: e.to_string(),
+                },
             })?;
 
             let result = sqlite3_step(stmt);
