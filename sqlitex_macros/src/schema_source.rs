@@ -74,7 +74,7 @@ pub fn process_file_source(
         open_connected_db_method = quote! {
             #[doc = #doc_msg]
             pub fn open_connected_db() -> Result<Self, sqlitex::errors::connection::SqliteOpenErrors> {
-                let conn = sqlitex::internal_sqlite::sqlitex_connection::Connection::open(#path)?;
+                let conn = sqlitex::internal_sqlite::sqlitex_connection::Connection::open(#file_name)?;
                 Ok(Self::new(conn))
             }
         };
