@@ -1,0 +1,2 @@
+[alias]
+ship = "release --execute --no-confirm"
