@@ -149,12 +149,23 @@ pub fn validate_insert_strict(
     for statement in ast {
         if let Statement::Insert(insert) = statement {
             let raw_table_name = insert.table.to_string();
-
             // Normalize table name (handle "public.users" -> "users")
-            let t_name = raw_table_name
+            let raw_t = raw_table_name
                 .split('.')
                 .next_back()
-                .unwrap_or(&raw_table_name)
+                .unwrap_or(&raw_table_name);
+
+            if raw_t.starts_with('\'') && raw_t.ends_with('\'') {
+                let clean_name = raw_t.trim_matches('\'');
+                return Err(format!(
+                    "Table name {} is enclosed in single quotes which is not allowed. \
+                 Use double quotes (\"{}\") for table identifiers instead.",
+                    raw_t, clean_name
+                ));
+            }
+
+            let t_name = raw_t
+                .trim_matches(|c| c == '"' || c == '`' || c == '[' || c == ']')
                 .to_lowercase();
 
             let schema_cols = match tables.get(&t_name) {

@@ -1,8 +1,8 @@
 use sqlitex_core::libsqlite3_sys::{
     self as ffi, SQLITE_OK, SQLITE_OPEN_CREATE, SQLITE_OPEN_MEMORY, SQLITE_OPEN_READONLY,
-    SQLITE_OPEN_READWRITE, SQLITE_ROW, sqlite3, sqlite3_close, sqlite3_column_text,
-    sqlite3_exec, sqlite3_finalize, sqlite3_free, sqlite3_open_v2,
-    sqlite3_prepare_v2, sqlite3_step, sqlite3_stmt,
+    SQLITE_OPEN_READWRITE, SQLITE_ROW, sqlite3, sqlite3_close, sqlite3_column_text, sqlite3_exec,
+    sqlite3_finalize, sqlite3_free, sqlite3_open_v2, sqlite3_prepare_v2, sqlite3_step,
+    sqlite3_stmt,
 };
 use sqlitex_core::utility::utils::get_sqlite_failiure;
 use sqlitex_type_inference::{expr::BaseType, table::ColumnInfo};
@@ -13,7 +13,6 @@ use std::{
     path::Path,
     ptr,
 };
-
 
 struct SqliteHandle {
     db: *mut sqlite3,
@@ -105,7 +104,6 @@ impl SqliteHandle {
         }
     }
 }
-
 
 pub fn get_db_schema_from_statements(scripts: &[(String, String)]) -> Result<Vec<String>, String> {
     let handle = SqliteHandle::open_memory()?;
@@ -294,7 +292,7 @@ pub fn validate_sql_syntax_with_sqlite(
                 })
                 .collect();
 
-            let create_stmt = format!("CREATE TABLE {} ({});", table_name, col_defs.join(", "));
+            let create_stmt = format!("CREATE TABLE \"{}\" ({});", table_name, col_defs.join(", "));
 
             let c_create_sql = CString::new(create_stmt).unwrap();
             let mut err_msg: *mut c_char = ptr::null_mut();
@@ -331,4 +329,3 @@ pub fn validate_sql_syntax_with_sqlite(
         }
     }
 }
-
