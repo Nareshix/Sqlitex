@@ -103,7 +103,7 @@ pub fn generate_read_methods(
             generated_structs.extend(quote! {
                 #[allow(non_camel_case_types)]
                 #[derive(Clone)]
-                struct #scalar_mapper_name;
+                pub struct #scalar_mapper_name;
                 impl sqlitex::traits::row_mapper::RowMapper for #scalar_mapper_name {
                     type Output = Option<#base_ty>;
                     unsafe fn map_row(&self, stmt: *mut sqlitex::libsqlite3_sys::sqlite3_stmt) -> Option<#base_ty> {
@@ -115,7 +115,7 @@ pub fn generate_read_methods(
             generated_structs.extend(quote! {
                 #[allow(non_camel_case_types)]
                 #[derive(Clone)]
-                struct #scalar_mapper_name;
+                pub struct #scalar_mapper_name;
                 impl sqlitex::traits::row_mapper::RowMapper for #scalar_mapper_name {
                     type Output = #base_ty;
                     unsafe fn map_row(&self, stmt: *mut sqlitex::libsqlite3_sys::sqlite3_stmt) -> #base_ty {
