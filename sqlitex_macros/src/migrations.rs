@@ -117,9 +117,8 @@ pub(crate) fn process_migrations_dir(
 
         let normalized_content: String = normalized(content.chars()).collect();
         let checksum = fnv1a_hash(&normalized_content);
-        let checksum_tokens: proc_macro2::TokenStream = checksum.to_string().parse().unwrap();
         migration_embeds.push(quote! {
-            (#version, #file_name, #checksum_tokens, include_str!(#file_path_str))
+            (#version, #file_name, #checksum, include_str!(#file_path_str))
         });
     }
 
@@ -136,99 +135,86 @@ pub(crate) fn process_migrations_dir(
         create_tables(&schema, &mut all_tables);
     }
 
-    let doc_msg = "Applies all pending migrations from the directory in numerical order. Uses an internal `_sqlitex_migrations` tracking table to ensure each migration is applied only once and atomically.";
     schema_init_method = quote! {
-        #[doc = #doc_msg]
-        pub fn migrate(&mut self) -> Result<(), sqlitex::errors::Error> {
-            let migrations = vec![
-                #(#migration_embeds),*
-            ];
+        let migrations: &[(i64, &str, i64, &str)] = &[
+            #(#migration_embeds),*
+        ];
 
-            // Wrap the entire migration process in a single transaction.
-            // This prevents race conditions if multiple instances start simultaneously.
-            self.transaction(|tx| {
-                tx.__db.execute_batch(
-                    "CREATE TABLE IF NOT EXISTS _sqlitex_migrations (
-                                version INTEGER PRIMARY KEY,
-                                name TEXT NOT NULL,
-                                checksum INTEGER NOT NULL
-                            );"
-                )?;
+        __conn.transaction(|tx| -> Result<(), sqlitex::Error> {
+            tx.execute_batch(
+                "CREATE TABLE IF NOT EXISTS _sqlitex_migrations (
+                    version INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    checksum INTEGER NOT NULL
+                );"
+            )?;
 
-                let mut applied_versions = std::collections::HashSet::new();
-                if let Ok(rows) = tx.__db.query("SELECT version, name, checksum FROM _sqlitex_migrations ORDER BY version ASC") {
-                    for row in rows.all()? {
-                        let db_version = row[0].as_i64();
-                        let db_name = row[1].as_string();
-                        let db_checksum = row[2].as_i64();
+            let mut applied_versions = std::collections::HashSet::new();
+            let rows = tx.query("SELECT version, name, checksum FROM _sqlitex_migrations ORDER BY version ASC")?;
+                for row in rows.all()? {
+                    let db_version = row[0].as_i64();
+                    let db_name = row[1].as_string();
+                    let db_checksum = row[2].as_i64();
 
-                        applied_versions.insert(db_version);
+                    applied_versions.insert(db_version);
 
-                        if let Some((_, disk_name, disk_checksum, _)) = migrations.iter().find(|m| m.0 == db_version) {
-                            if db_name != *disk_name {
-                                return Err(sqlitex::errors::Error::Migration(
-                                    sqlitex::errors::MigrationError::NameMismatch {
-                                        version: db_version,
-                                        expected_name: db_name,
-                                        actual_name: disk_name.to_string(),
-                                    }
-                                ));
-                            }
-                            if db_checksum != *disk_checksum {
-                                return Err(sqlitex::errors::Error::Migration(
-                                    sqlitex::errors::MigrationError::ChecksumMismatch {
-                                        version: db_version,
-                                        name: db_name,
-                                        expected_checksum: db_checksum,
-                                        actual_checksum: *disk_checksum,
-                                    }
-                                ));
-                            }
-                        } else {
-                            return Err(sqlitex::errors::Error::Migration(
-                                sqlitex::errors::MigrationError::MissingFile {
+                    if let Some((_, disk_name, disk_checksum, _)) = migrations.iter().find(|m| m.0 == db_version) {
+                        if db_name != *disk_name {
+                            return Err(sqlitex::Error::Migration(
+                                sqlitex::__private::MigrationError::NameMismatch {
                                     version: db_version,
-                                    name: db_name,
+                                    expected_name: db_name,
+                                    actual_name: disk_name.to_string(),
                                 }
                             ));
                         }
-                    }
-                }
-
-                for (version, name, checksum, sql) in migrations {
-                    if !applied_versions.contains(&version) {
-                        // If it hasn't been applied, run it!
-                        tx.__db.execute_batch(sql)?;
-
-                        let mut sql_stmt = sqlitex::internal_sqlite::sqlitex_statement::SqlitexStmt {
-                            sql_query: "INSERT INTO _sqlitex_migrations (version, name, checksum) VALUES (?, ?, ?)",
-                            stmt: std::ptr::null_mut(),
-                        };
-
-                        unsafe {
-                            sqlitex::utility::utils::prepare_stmt(
-                                tx.__db.db,
-                                &mut sql_stmt.stmt,
-                                sql_stmt.sql_query
-                            ).map_err(|e| sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Prepare(e)))?;
+                        if db_checksum != *disk_checksum {
+                            return Err(sqlitex::Error::Migration(
+                                sqlitex::__private::MigrationError::ChecksumMismatch {
+                                    version: db_version,
+                                    name: db_name,
+                                    expected_checksum: db_checksum,
+                                    actual_checksum: *disk_checksum,
+                                }
+                            ));
                         }
-
-                        let mut preparred_statement = sqlitex::internal_sqlite::preparred_statement::PreparredStmt {
-                            stmt: sql_stmt.stmt,
-                            conn: tx.__db.db,
-                        };
-
-                        preparred_statement.bind_parameter(1, version).map_err(|e| sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Bind(e)))?;
-                        preparred_statement.bind_parameter(2, name).map_err(|e| sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Bind(e)))?;
-                        preparred_statement.bind_parameter(3, checksum).map_err(|e| sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Bind(e)))?;
-
-                        preparred_statement.step().map_err(|e| sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Step(e)))?;
-
+                    } else {
+                        return Err(sqlitex::Error::Migration(
+                            sqlitex::__private::MigrationError::MissingFile {
+                                version: db_version,
+                                name: db_name,
+                            }
+                        ));
                     }
                 }
-                Ok(())
-            })
-        }
+
+
+            for &(version, name, checksum, sql) in migrations {
+                if !applied_versions.contains(&version) {
+                    tx.execute_batch(sql)?;
+
+                    let mut __stmt = std::ptr::null_mut();
+                    unsafe {
+                        sqlitex::__private::prepare_stmt(
+                            tx.db,
+                            &mut __stmt,
+                            "INSERT INTO _sqlitex_migrations (version, name, checksum) VALUES (?, ?, ?)"
+                        ).map_err(|e| sqlitex::Error::from(sqlitex::__private::SqlWriteBindingError::Prepare(e)))?;
+                    }
+
+                    let mut prep = sqlitex::__private::PreparredStmt {
+                        stmt: __stmt,
+                        conn: tx.db,
+                    };
+
+                    prep.bind_parameter(1, version).map_err(|e| sqlitex::Error::from(sqlitex::__private::SqlWriteBindingError::Bind(e)))?;
+                    prep.bind_parameter(2, name).map_err(|e| sqlitex::Error::from(sqlitex::__private::SqlWriteBindingError::Bind(e)))?;
+                    prep.bind_parameter(3, checksum).map_err(|e| sqlitex::Error::from(sqlitex::__private::SqlWriteBindingError::Bind(e)))?;
+                    prep.step().map_err(|e| sqlitex::Error::from(sqlitex::__private::SqlWriteBindingError::Step(e)))?;
+                }
+            }
+            Ok(())
+        })
     };
     Ok(MigrationsOutput {
         schema_init_method,

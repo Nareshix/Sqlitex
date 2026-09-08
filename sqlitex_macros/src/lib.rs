@@ -5,7 +5,6 @@ mod config;
 mod inline;
 mod migrations;
 mod schema_source;
-mod sql_mapping;
 mod sqlite_validation;
 mod utils;
 
@@ -32,7 +31,7 @@ pub fn query_as(input: TokenStream) -> TokenStream {
     }
 }
 
-/// Standalone migration runner that executes all pending migrations from `sqlitex.toml`.
+/// Applies all pending migrations from the directory in numerical order. Uses an internal `_sqlitex_migrations` tracking table to ensure each migration is applied only once and atomically."
 #[proc_macro]
 pub fn migrate(input: TokenStream) -> TokenStream {
     let conn_expr = proc_macro2::TokenStream::from(input);
@@ -71,24 +70,12 @@ pub fn migrate(input: TokenStream) -> TokenStream {
         Ok(output) => {
             let schema_init = output.schema_init_method;
             let expanded = quote::quote! {
-                {
-                    struct __Migrator<'a> {
-                        __db: &'a sqlitex::internal_sqlite::sqlitex_connection::Connection,
-                    }
-                    impl<'a> __Migrator<'a> {
-                        #schema_init
-                    }
-                    let migrator = __Migrator { __db: #conn_expr };
-                    migrator.migrate()
-                }
+                (|__conn: &sqlitex::Connection| -> sqlitex::Result<()> {
+                    #schema_init
+                })(#conn_expr)
             };
             expanded.into()
         }
         Err(err) => err.to_compile_error().into(),
     }
-}
-
-#[proc_macro_derive(SqlMapping)]
-pub fn sql_mapping_derive(input: TokenStream) -> TokenStream {
-    sql_mapping::expand_sql_mapping(input)
 }
