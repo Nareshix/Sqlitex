@@ -117,8 +117,8 @@ fn run_migrate_add(name: &str) -> Result<(), Box<dyn std::error::Error>> {
     if let Ok(entries) = fs::read_dir(&migrations_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("sql") {
-                if let Some(filename) = path.file_name().and_then(|s| s.to_str()) {
+            if path.extension().and_then(|s| s.to_str()) == Some("sql")
+                && let Some(filename) = path.file_name().and_then(|s| s.to_str()) {
                     let num_str: String = filename
                         .chars()
                         .take_while(|c| c.is_ascii_digit())
@@ -127,7 +127,6 @@ fn run_migrate_add(name: &str) -> Result<(), Box<dyn std::error::Error>> {
                         max_version = max_version.max(num);
                     }
                 }
-            }
         }
     }
 
@@ -149,11 +148,10 @@ fn resolve_migrations_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let toml_path = Path::new("sqlitex.toml");
     if toml_path.exists() {
         let content = fs::read_to_string(toml_path)?;
-        if let Ok(cfg) = toml::from_str::<MinimalConfig>(&content) {
-            if let Some(schema) = cfg.schema {
+        if let Ok(cfg) = toml::from_str::<MinimalConfig>(&content)
+            && let Some(schema) = cfg.schema {
                 return Ok(PathBuf::from(schema.path));
             }
-        }
     }
     // Default fallback
     Ok(PathBuf::from("migrations"))
