@@ -248,7 +248,8 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
         }
 
         let mapper_impl = quote! {
-            #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+        #[derive(Clone, Debug, sqlitex::serde::Serialize, sqlitex::serde::Deserialize)]
+            #[serde(crate = "sqlitex::serde")]
             pub struct __Record {
                 #(#struct_fields),*
             }

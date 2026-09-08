@@ -14,8 +14,10 @@ documentation = "https://docs.rs/sqlitex/latest/sqlitex"
 [dependencies]
 sqlitex_core.workspace = true
 sqlitex_macros.workspace = true
+serde = { version = "1.0", features = ["derive"] }
 
 [package.metadata.release]
 tag = true
 tag-name = "v{{version}}"
 pre-release-hook = ["git-cliff", "--repository", "..", "--unreleased", "--tag", "{{version}}", "--prepend", "../CHANGELOG.md"]
+
