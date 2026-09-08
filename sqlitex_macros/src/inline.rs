@@ -154,7 +154,7 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
     // 2. READ QUERY (SELECT)
     let cardinality = detect_query_cardinality(&sql_query, &all_tables);
 
-    let (output_type, mapper_struct) = if let Some(target) = input.target_type {
+    let (_output_type, mapper_struct) = if let Some(target) = input.target_type {
         let is_single = select_types.len() == 1;
 
         let mapper_impl = if is_single {
