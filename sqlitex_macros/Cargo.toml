@@ -15,9 +15,9 @@ proc-macro = true
 syn = {version = "2.0.109", features = ["full"]}
 quote = "1.0.42"
 proc-macro2 = "1.0.103"
-sqlformat = "0.5.0"
 sqlitex_core.workspace = true
 sqlitex_type_inference.workspace = true
 normalize-line-endings = "0.3.0"
 toml = "1.1.5"
 serde = { version = "1.0", features = ["derive"] }
+libsqlite3-sys = { version = "0.35.0", features = ["bundled"] }

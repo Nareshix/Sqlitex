@@ -1,23 +1,20 @@
-
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::{
-    parse::{Parse, ParseStream},
     Expr, LitStr, Token, Type,
+    parse::{Parse, ParseStream},
 };
 
 use sqlitex_type_inference::{
-    binding_patterns::get_type_of_binding_parameters,
-    detect_query_cardinality,
-    expr::BaseType,
-    pg_cast_syntax_to_sqlite, rewrite_bool_columns,
-    select_patterns::get_types_from_select,
-    validate_cast_types, validate_create_table_types, validate_insert_strict,
-    validate_no_virtual_tables, validate_single_statement, QueryCardinality,
+    QueryCardinality, binding_patterns::get_type_of_binding_parameters, detect_query_cardinality,
+    expr::BaseType, pg_cast_syntax_to_sqlite, rewrite_bool_columns,
+    select_patterns::get_types_from_select, validate_cast_types, validate_create_table_types,
+    validate_insert_strict, validate_no_virtual_tables, validate_single_statement,
 };
 
 use crate::{
-    config::SqlitexConfig, migrations, schema_source, sqlite_validation::validate_sql_syntax_with_sqlite,
+    config::SqlitexConfig, migrations, schema_source,
+    sqlite_validation::validate_sql_syntax_with_sqlite,
 };
 
 pub struct QueryInput {
@@ -78,13 +75,14 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
     let full_schema_str = full_schema_path.to_str().expect("Invalid schema path");
     let schema_path_lit = syn::LitStr::new(full_schema_str, input.sql.span());
 
-    let (all_tables, mut watcher_tokens) = if full_schema_path.is_dir() || schema_cfg.path.ends_with('/') {
-        let result = migrations::process_migrations_dir(&schema_path_lit, full_schema_str)?;
-        (result.all_tables, result.watcher_tokens)
-    } else {
-        let result = schema_source::process_file_source(&schema_path_lit, full_schema_str)?;
-        (result.all_tables, result.watcher_tokens)
-    };
+    let (all_tables, mut watcher_tokens) =
+        if full_schema_path.is_dir() || schema_cfg.path.ends_with('/') {
+            let result = migrations::process_migrations_dir(&schema_path_lit, full_schema_str)?;
+            (result.all_tables, result.watcher_tokens)
+        } else {
+            let result = schema_source::process_file_source(&schema_path_lit, full_schema_str)?;
+            (result.all_tables, result.watcher_tokens)
+        };
 
     if let Some(cfg_path) = config_file_path {
         let cfg_path_str = cfg_path.to_str().unwrap();
@@ -95,14 +93,17 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
 
     let raw_sql = input.sql.value();
     let sql_query = pg_cast_syntax_to_sqlite(&raw_sql);
-    let sql_query = rewrite_bool_columns(&sql_query).map_err(|e| syn::Error::new(input.sql.span(), e))?;
+    let sql_query =
+        rewrite_bool_columns(&sql_query).map_err(|e| syn::Error::new(input.sql.span(), e))?;
 
     validate_no_virtual_tables(&sql_query).map_err(|e| syn::Error::new(input.sql.span(), e))?;
     validate_cast_types(&sql_query).map_err(|e| syn::Error::new(input.sql.span(), e))?;
     validate_create_table_types(&sql_query).map_err(|e| syn::Error::new(input.sql.span(), e))?;
     validate_single_statement(&sql_query).map_err(|e| syn::Error::new(input.sql.span(), e))?;
-    validate_sql_syntax_with_sqlite(&all_tables, &sql_query).map_err(|e| syn::Error::new(input.sql.span(), e))?;
-    validate_insert_strict(&sql_query, &all_tables).map_err(|e| syn::Error::new(input.sql.span(), e))?;
+    validate_sql_syntax_with_sqlite(&all_tables, &sql_query)
+        .map_err(|e| syn::Error::new(input.sql.span(), e))?;
+    validate_insert_strict(&sql_query, &all_tables)
+        .map_err(|e| syn::Error::new(input.sql.span(), e))?;
 
     let expected_bindings = get_type_of_binding_parameters(&sql_query, &all_tables)
         .map_err(|err| syn::Error::new(input.sql.span(), err.message))?;
@@ -127,7 +128,7 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
     }
 
     let binder = quote! {
-        move |__stmt: &sqlitex::internal_sqlite::preparred_statement::PreparredStmt| -> Result<(), sqlitex::errors::SqliteFailure> {
+        move |__stmt: &sqlitex::__private::preparred_statement::PreparredStmt| -> Result<(), sqlitex::__private::SqliteFailure> {
             #(#bind_calls)*
             Ok(())
         }
@@ -141,14 +142,14 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
     // 1. WRITE QUERY (INSERT, UPDATE, DELETE, CREATE)
     if select_types.is_empty() {
         return Ok(quote! {
-            {
-                #watcher_tokens
-                sqlitex::query::WriteQuery {
-                    sql: #transpiled_sql_lit,
-                    binder: #binder,
-                }
-            }
-        });
+                    {
+                        #watcher_tokens
+                            sqlitex::__private::WriteQuery {
+                            sql: #transpiled_sql_lit,
+                            binder: #binder,
+                        }
+                    }
+                });
     }
 
     // 2. READ QUERY (SELECT)
@@ -175,10 +176,10 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
 
             quote! {
                 pub struct __Mapper;
-                impl sqlitex::traits::row_mapper::RowMapper for __Mapper {
+                impl sqlitex::__private::row_mapper::RowMapper for __Mapper {
                     type Output = #target;
-                    unsafe fn map_row(&self, stmt: *mut sqlitex::libsqlite3_sys::sqlite3_stmt) -> Self::Output {
-                        <#col_ty as sqlitex::traits::from_sql::FromSql>::from_sql(stmt, 0)
+                    unsafe fn map_row(&self, stmt: *mut sqlitex::__private::libsqlite3_sys::sqlite3_stmt) -> Self::Output {
+                        <#col_ty as sqlitex::__private::from_sql::FromSql>::from_sql(stmt, 0)
                     }
                 }
             }
@@ -202,15 +203,15 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
                 };
 
                 field_reads.push(quote! {
-                    #ident: <#col_ty as sqlitex::traits::from_sql::FromSql>::from_sql(stmt, #idx)
+                #ident: <#col_ty as sqlitex::__private::from_sql::FromSql>::from_sql(stmt, #idx)
                 });
             }
 
             quote! {
                 pub struct __Mapper;
-                impl sqlitex::traits::row_mapper::RowMapper for __Mapper {
+                impl sqlitex::__private::row_mapper::RowMapper for __Mapper {
                     type Output = #target;
-                    unsafe fn map_row(&self, stmt: *mut sqlitex::libsqlite3_sys::sqlite3_stmt) -> Self::Output {
+                    unsafe fn map_row(&self, stmt: *mut sqlitex::__private::libsqlite3_sys::sqlite3_stmt) -> Self::Output {
                         #target {
                             #(#field_reads),*
                         }
@@ -243,21 +244,21 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
 
             struct_fields.push(quote! { pub #ident: #col_ty });
             field_reads.push(quote! {
-                #ident: <#col_ty as sqlitex::traits::from_sql::FromSql>::from_sql(stmt, #idx)
+                #ident: <#col_ty as sqlitex::__private::from_sql::FromSql>::from_sql(stmt, #idx)
             });
         }
 
         let mapper_impl = quote! {
-        #[derive(Clone, Debug, sqlitex::serde::Serialize, sqlitex::serde::Deserialize)]
-            #[serde(crate = "sqlitex::serde")]
+            #[derive(Clone, Debug, sqlitex::__private::serde::Serialize, sqlitex::__private::serde::Deserialize)]
+            #[serde(crate = "sqlitex::__private::serde")]
             pub struct __Record {
                 #(#struct_fields),*
             }
 
             pub struct __Mapper;
-            impl sqlitex::traits::row_mapper::RowMapper for __Mapper {
+            impl sqlitex::__private::row_mapper::RowMapper for __Mapper {
                 type Output = __Record;
-                unsafe fn map_row(&self, stmt: *mut sqlitex::libsqlite3_sys::sqlite3_stmt) -> Self::Output {
+                unsafe fn map_row(&self, stmt: *mut sqlitex::__private::libsqlite3_sys::sqlite3_stmt) -> Self::Output {
                     __Record {
                         #(#field_reads),*
                     }
@@ -270,21 +271,21 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
 
     let query_runner = match cardinality {
         QueryCardinality::ExactlyOne => quote! {
-            sqlitex::query::ScalarQuery {
+            sqlitex::__private::ScalarQuery {
                 sql: #transpiled_sql_lit,
                 mapper: __Mapper,
                 binder: #binder,
             }
         },
         QueryCardinality::ZeroOrOne => quote! {
-            sqlitex::query::OptionalQuery {
+            sqlitex::__private::OptionalQuery {
                 sql: #transpiled_sql_lit,
                 mapper: __Mapper,
                 binder: #binder,
             }
         },
         QueryCardinality::MaybeMany => quote! {
-            sqlitex::query::ManyQuery {
+            sqlitex::__private::ManyQuery {
                 sql: #transpiled_sql_lit,
                 mapper: __Mapper,
                 binder: #binder,

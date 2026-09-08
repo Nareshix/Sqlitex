@@ -1,4 +1,4 @@
-use sqlitex_core::libsqlite3_sys::{
+use libsqlite3_sys::{
     self as ffi, SQLITE_OK, SQLITE_OPEN_CREATE, SQLITE_OPEN_MEMORY, SQLITE_OPEN_READONLY,
     SQLITE_OPEN_READWRITE, SQLITE_ROW, sqlite3, sqlite3_close, sqlite3_column_text, sqlite3_exec,
     sqlite3_finalize, sqlite3_free, sqlite3_open_v2, sqlite3_prepare_v2, sqlite3_step,

@@ -7,7 +7,6 @@ use crate::{
     traits::row_mapper::RowMapper, utility::utils::get_sqlite_failiure,
 };
 
-#[allow(dead_code)]
 pub struct Rows<'a, M: RowMapper> {
     pub stmt: PreparredStmt,
     pub mapper: M,
