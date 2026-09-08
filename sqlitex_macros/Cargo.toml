@@ -19,3 +19,5 @@ sqlformat = "0.5.0"
 sqlitex_core.workspace = true
 sqlitex_type_inference.workspace = true
 normalize-line-endings = "0.3.0"
+toml = "1.1.5"
+serde = { version = "1.0", features = ["derive"] }

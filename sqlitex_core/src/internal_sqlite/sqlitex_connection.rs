@@ -342,3 +342,60 @@ impl Connection {
         }
     }
 }
+
+
+#[derive(Debug, Clone)]
+pub struct PragmaSettings {
+    pub busy_timeout_ms: u32,
+    pub foreign_keys: bool,
+    pub journal_mode: Option<String>,
+    pub synchronous: Option<String>,
+    pub cache_size: Option<i32>,
+}
+
+impl Default for PragmaSettings {
+    fn default() -> Self {
+        Self {
+            busy_timeout_ms: 5000,
+            foreign_keys: true,
+            journal_mode: None,
+            synchronous: Some("FULL".to_string()),
+            cache_size: None,
+        }
+    }
+}
+
+impl Connection {
+    pub fn open_with_pragmas(filename: &str, pragmas: &PragmaSettings) -> Result<Arc<Self>, SqliteOpenErrors> {
+        let flag = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+        let conn = Connection::open_with_flags(filename, flag)?;
+        conn.apply_pragmas(pragmas).map_err(|e| SqliteOpenErrors::SqliteFailure {
+            code: e.code,
+            error_msg: e.error_msg,
+        })?;
+        Ok(conn)
+    }
+
+    pub fn apply_pragmas(&self, pragmas: &PragmaSettings) -> Result<(), SqliteFailure> {
+        unsafe {
+            sqlite3_busy_timeout(self.db, pragmas.busy_timeout_ms as c_int);
+        }
+
+        let fk_cmd = if pragmas.foreign_keys { "PRAGMA foreign_keys = ON;" } else { "PRAGMA foreign_keys = OFF;" };
+        self.execute_batch(fk_cmd)?;
+
+        if let Some(ref jm) = pragmas.journal_mode {
+            self.execute_batch(&format!("PRAGMA journal_mode = {};", jm))?;
+        }
+
+        if let Some(ref sync) = pragmas.synchronous {
+            self.execute_batch(&format!("PRAGMA synchronous = {};", sync))?;
+        }
+
+        if let Some(cs) = pragmas.cache_size {
+            self.execute_batch(&format!("PRAGMA cache_size = {};", cs))?;
+        }
+
+        Ok(())
+    }
+}

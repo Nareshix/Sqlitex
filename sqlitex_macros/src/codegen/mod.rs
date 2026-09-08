@@ -24,11 +24,13 @@ use context::CodegenContext;
 pub(crate) fn expand(
     item_struct: &mut ItemStruct,
     db_path_lit: Option<&syn::LitStr>,
+    config_opt: Option<&crate::config::SqlitexConfig>,
 ) -> syn::Result<(proc_macro2::TokenStream, proc_macro2::TokenStream)> {
     let mut all_tables = HashMap::new();
     let mut schema_init_method = quote! {};
     let mut open_connected_db_method = quote! {};
     let mut watcher_tokens = quote! {};
+    let mut open_default_method = quote! {};
 
     if let Some(path) = db_path_lit {
         let db_path = path.value();
@@ -166,6 +168,56 @@ pub(crate) fn expand(
 
     let transaction_method = generate_transaction_method();
 
+    if let Some(cfg) = config_opt
+        && let Some(ref db_cfg) = cfg.database {
+            let db_path = &db_cfg.path;
+
+            let pragma_tokens = if let Some(ref p) = cfg.pragmas {
+                let timeout = p.busy_timeout;
+                let fk = p.foreign_keys;
+                let jm = match &p.journal_mode {
+                    Some(m) => quote! { Some(#m.to_string()) },
+                    None => quote! { None },
+                };
+                let sync = match &p.synchronous {
+                    Some(s) => quote! { Some(#s.to_string()) },
+                    None => quote! { None },
+                };
+                let cache = match p.cache_size {
+                    Some(c) => quote! { Some(#c) },
+                    None => quote! { None },
+                };
+
+                quote! {
+                    sqlitex::internal_sqlite::sqlitex_connection::PragmaSettings {
+                        busy_timeout_ms: #timeout,
+                        foreign_keys: #fk,
+                        journal_mode: #jm,
+                        synchronous: #sync,
+                        cache_size: #cache,
+                    }
+                }
+            } else {
+                quote! { sqlitex::internal_sqlite::sqlitex_connection::PragmaSettings::default() }
+            };
+
+            let doc_comment = format!(
+            "Opens the database connection to `{}` specified in `sqlitex.toml`.",
+            db_path
+            );
+
+
+            open_default_method = quote! {
+                #[doc = #doc_comment]
+                pub fn open_default() -> Result<Self, sqlitex::errors::Error> {
+                    let pragmas = #pragma_tokens;
+                    let conn = sqlitex::internal_sqlite::sqlitex_connection::Connection::open_with_pragmas(#db_path, &pragmas)
+                        .map_err(sqlitex::errors::Error::from)?;
+                    Ok(Self::new(conn))
+                }
+            };
+        }
+
     Ok((
         quote! {
             #(#generated_structs)*
@@ -186,6 +238,8 @@ pub(crate) fn expand(
 
                     #transaction_method
                     #open_connected_db_method
+                    #open_default_method
+
                     #schema_init_method
                     #(#generated_methods)*
                 }
