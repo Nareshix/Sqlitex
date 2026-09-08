@@ -19,7 +19,7 @@ pub fn generate_write_methods(
         generated_methods.extend(quote! {
             #(#field_attrs)*
             #[doc = #doc_comment]
-            pub fn #ident(&mut self) -> Result<(), sqlitex::errors::SqlWriteError> {
+            pub fn #ident(&self) -> Result<(), sqlitex::errors::SqlWriteError> {
                 #prepare_block
                 preparred_statement.step()?;
                 Ok(())
@@ -32,7 +32,7 @@ pub fn generate_write_methods(
         generated_methods.extend(quote! {
             #(#field_attrs)*
             #[doc = #doc_comment]
-            pub fn #ident(&mut self #(, #method_args)*) -> Result<(), sqlitex::errors::SqlWriteBindingError> {
+            pub fn #ident(&self #(, #method_args)*) -> Result<(), sqlitex::errors::SqlWriteBindingError> {
                 #prepare_block
                 #(#bind_calls)*
                 preparred_statement.step()?;
@@ -147,20 +147,24 @@ db.{}_bulk(&bulk)?;
             #(#field_attrs)*
             #[doc = #many_doc_header]
             #[doc = #doc_comment]
-            pub fn #many_ident(&mut self, items: &[#item_type]) -> Result<(), sqlitex::errors::Error> {
+pub fn #many_ident(&self, items: &[#item_type]) -> Result<(), sqlitex::errors::Error> {
                 if items.is_empty() {
                     return Ok(());
                 }
 
-                if self.#ident.stmt.is_null() {
-                    unsafe {
-                        sqlitex::utility::utils::prepare_stmt(
-                            self.__db.db,
-                            &mut self.#ident.stmt,
-                            self.#ident.sql_query
-                        ).map_err(|e| sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Prepare(e)))?;
-                    }
+                let mut __bulk_stmt = std::ptr::null_mut();
+                unsafe {
+                    sqlitex::utility::utils::prepare_stmt(
+                        self.__db.db,
+                        &mut __bulk_stmt,
+                        self.#ident.sql_query
+                    ).map_err(|e| sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Prepare(e)))?;
                 }
+
+                let mut preparred_statement = sqlitex::internal_sqlite::preparred_statement::PreparredStmt {
+                    stmt: __bulk_stmt,
+                    conn: self.__db.db,
+                };
 
                 let is_outermost = unsafe { sqlitex::libsqlite3_sys::sqlite3_get_autocommit(self.__db.db) != 0 };
 
@@ -171,11 +175,6 @@ db.{}_bulk(&bulk)?;
                 }
 
                 for item in items {
-                    let mut preparred_statement = sqlitex::internal_sqlite::preparred_statement::PreparredStmt {
-                        stmt: self.#ident.stmt,
-                        conn: self.__db.db,
-                    };
-
                     #(#final_bulk_bind_calls)*
 
                     if let Err(__e) = preparred_statement.step() {
@@ -186,6 +185,10 @@ db.{}_bulk(&bulk)?;
                             let _ = self.__db.execute_batch("RELEASE SAVEPOINT sqlitex_batch");
                         }
                         return Err(sqlitex::errors::Error::from(sqlitex::errors::SqlWriteBindingError::Step(__e)));
+                    }
+
+                    unsafe {
+                        sqlitex::libsqlite3_sys::sqlite3_reset(preparred_statement.stmt);
                     }
                 }
 
@@ -206,6 +209,5 @@ db.{}_bulk(&bulk)?;
             }
         });
     }
-
     Ok(generated_methods)
 }

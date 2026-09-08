@@ -47,7 +47,6 @@ pub unsafe fn get_sqlite_failiure(db: *mut sqlite3) -> (i32, String) {
 ///
 /// - db must be a valid sqlite3 connection which is not NULL
 pub unsafe fn close_db(db: *mut sqlite3) {
-    // also sqlite3_close_v2 is only for gc languages hence sqlite3_close is preferred
     unsafe { ffi::sqlite3_close(db) };
 }
 

@@ -247,11 +247,9 @@ fn push_sql_assignment(
     sql_assignments.push(quote! {
         #ident: sqlitex::internal_sqlite::sqlitex_statement::SqlitexStmt {
             sql_query: #transpiled_sql_lit,
-            stmt: std::ptr::null_mut(),
         }
     });
 }
-
 fn generate_unique_param_names(
     binding_types: &[sqlitex_type_inference::binding_patterns::BindingParam],
 ) -> Vec<String> {
@@ -381,9 +379,9 @@ db.transaction(|tx| {
 
     quote! {
         #[doc = #transaction_doc]
-        pub fn transaction<T, F>(&mut self, f: F) -> Result<T, sqlitex::errors::Error>
+        pub fn transaction<T, F>(&self, f: F) -> Result<T, sqlitex::errors::Error>
         where
-            F: FnOnce(&mut Self) -> Result<T, sqlitex::errors::Error>,
+            F: FnOnce(&Self) -> Result<T, sqlitex::errors::Error>,
         {
             let is_outermost = unsafe {
                 sqlitex::libsqlite3_sys::sqlite3_get_autocommit(self.__db.db) != 0

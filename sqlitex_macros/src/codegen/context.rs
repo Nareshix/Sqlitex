@@ -15,22 +15,20 @@ impl<'a> CodegenContext<'a> {
     pub fn generate_prepare_block(&self) -> TokenStream {
         let ident = self.ident;
         quote! {
-            if self.#ident.stmt.is_null() {
-                unsafe {
-                    sqlitex::utility::utils::prepare_stmt(
-                        self.__db.db,
-                        &mut self.#ident.stmt,
-                        self.#ident.sql_query
-                    )?;
-                }
+            let mut __stmt = std::ptr::null_mut();
+            unsafe {
+                sqlitex::utility::utils::prepare_stmt(
+                    self.__db.db,
+                    &mut __stmt,
+                    self.#ident.sql_query
+                )?;
             }
             let mut preparred_statement = sqlitex::internal_sqlite::preparred_statement::PreparredStmt {
-                stmt: self.#ident.stmt,
+                stmt: __stmt,
                 conn: self.__db.db,
             };
         }
     }
-
     /// Automatically infers the Rust types based on BaseType, constructs the function parameters
     /// (e.g. `arg_1: String`) and returns the bind calls. Both read and write logic share this uniformly!
     pub fn generate_bindings(
@@ -52,7 +50,12 @@ impl<'a> CodegenContext<'a> {
                 BaseType::Bool => quote! { bool },
                 BaseType::Text => quote! { &str },
                 BaseType::Blob => quote! { &[u8] },
-                _ => return Err(syn::Error::new(self.sql_span, "Unable to infer type for `?`. Consider casting with `::` or `CAST AS`")),
+                _ => {
+                    return Err(syn::Error::new(
+                        self.sql_span,
+                        "Unable to infer type for `?`. Consider casting with `::` or `CAST AS`",
+                    ));
+                }
             };
 
             let final_type = if bind_type.nullable {

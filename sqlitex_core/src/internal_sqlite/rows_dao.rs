@@ -11,7 +11,7 @@ use crate::{
 pub struct Rows<'a, M: RowMapper> {
     pub stmt: PreparredStmt,
     pub mapper: M,
-    pub _marker: PhantomData<&'a mut ()>,
+    pub _marker: PhantomData<&'a ()>,
 }
 
 impl<'a, M: RowMapper> Iterator for Rows<'a, M> {

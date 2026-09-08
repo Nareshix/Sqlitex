@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use libsqlite3_sys::{
     SQLITE_BUSY, SQLITE_CONSTRAINT_CHECK, SQLITE_CONSTRAINT_FOREIGNKEY, SQLITE_CONSTRAINT_UNIQUE,
-    SQLITE_DONE, SQLITE_OK, SQLITE_ROW, sqlite3, sqlite3_reset, sqlite3_step, sqlite3_stmt,
+    SQLITE_DONE, SQLITE_OK, SQLITE_ROW, sqlite3, sqlite3_finalize, sqlite3_step, sqlite3_stmt,
 };
 
 use crate::{
@@ -20,8 +20,7 @@ pub struct PreparredStmt {
 impl Drop for PreparredStmt {
     fn drop(&mut self) {
         unsafe {
-            // we do not clear the binding so that we can cache the stmt
-            sqlite3_reset(self.stmt);
+            sqlite3_finalize(self.stmt);
         }
     }
 }

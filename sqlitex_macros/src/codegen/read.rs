@@ -139,7 +139,7 @@ pub fn generate_read_methods(
             generated_methods.extend(quote! {
                 #(#field_attrs)*
                 #[doc = #doc_comment]
-                pub fn #ident(&mut self #(, #method_args)*) -> Result<sqlitex::internal_sqlite::rows_dao::Rows<'_, #mapper_struct_name>, #ret_err_type> {
+                pub fn #ident(&self #(, #method_args)*) -> Result<sqlitex::internal_sqlite::rows_dao::Rows<'_, #mapper_struct_name>, #ret_err_type> {
                     #prepare_block
                     #(#bind_calls)*
                     Ok(preparred_statement.query(#output_struct_name))
@@ -150,7 +150,7 @@ pub fn generate_read_methods(
             generated_methods.extend(quote! {
                 #(#field_attrs)*
                 #[doc = #doc_comment]
-                pub fn #ident(&mut self #(, #method_args)*) -> Result<sqlitex::internal_sqlite::rows_dao::Rows<'_, #scalar_mapper_name>, #ret_err_type> {
+                pub fn #ident(&self #(, #method_args)*) -> Result<sqlitex::internal_sqlite::rows_dao::Rows<'_, #scalar_mapper_name>, #ret_err_type> {
                     #prepare_block
                     #(#bind_calls)*
                     Ok(preparred_statement.query(#scalar_mapper_name))
@@ -161,7 +161,7 @@ pub fn generate_read_methods(
             generated_methods.extend(quote! {
                 #(#field_attrs)*
                 #[doc = #doc_comment]
-                pub fn #ident(&mut self #(, #method_args)*) -> Result<Option<#output_struct_name>, sqlitex::errors::Error> {
+                pub fn #ident(&self #(, #method_args)*) -> Result<Option<#output_struct_name>, sqlitex::errors::Error> {
                     #prepare_block
                     #(#bind_calls)*
                     preparred_statement.query(#output_struct_name)
@@ -174,7 +174,7 @@ pub fn generate_read_methods(
             generated_methods.extend(quote! {
                 #(#field_attrs)*
                 #[doc = #doc_comment]
-                pub fn #ident(&mut self #(, #method_args)*) -> Result<#output_struct_name, sqlitex::errors::Error> {
+                pub fn #ident(&self #(, #method_args)*) -> Result<#output_struct_name, sqlitex::errors::Error> {
                     #prepare_block
                     #(#bind_calls)*
                     preparred_statement.query(#output_struct_name)
@@ -195,7 +195,7 @@ pub fn generate_read_methods(
             generated_methods.extend(quote! {
                 #(#field_attrs)*
                 #[doc = #doc_comment]
-                pub fn #ident(&mut self #(, #method_args)*) -> Result<Option<#single_col_rust_type>, sqlitex::errors::Error> {
+                pub fn #ident(&self #(, #method_args)*) -> Result<Option<#single_col_rust_type>, sqlitex::errors::Error> {
                     #prepare_block
                     #(#bind_calls)*
                     preparred_statement.query(#scalar_mapper_name)
@@ -208,7 +208,7 @@ pub fn generate_read_methods(
             generated_methods.extend(quote! {
                 #(#field_attrs)*
                 #[doc = #doc_comment]
-                pub fn #ident(&mut self #(, #method_args)*) -> Result<#single_col_rust_type, sqlitex::errors::Error> {
+                pub fn #ident(&self #(, #method_args)*) -> Result<#single_col_rust_type, sqlitex::errors::Error> {
                     #prepare_block
                     #(#bind_calls)*
                     preparred_statement.query(#scalar_mapper_name)
