@@ -47,10 +47,8 @@ struct SchemaSection {
 const DEFAULT_TOML_TEMPLATE: &str = r#"# sqlitex.toml
 
 [schema]
+# Can point to a folder (migrations/), a file (schema.sql), or a database (app.db)
 path = "migrations/"
-
-[database]
-path = "app.db"
 
 # [pragmas]
 # All PRAGMA settings below are optional.
@@ -62,7 +60,6 @@ path = "app.db"
 # synchronous = "NORMAL"    # Reduces disk flushing overhead; safe to use with WAL mode
 # cache_size = -64000       # Memory page cache (-64000 = ~64MB of RAM buffer)
 "#;
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
