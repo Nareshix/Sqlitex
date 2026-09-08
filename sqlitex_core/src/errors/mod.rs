@@ -42,7 +42,11 @@ pub enum MigrationError {
     #[error(
         "Integrity Error: Migration {version} was renamed from '{expected_name}' to '{actual_name}' after being applied!"
     )]
-    NameMismatch { version: i64, expected_name: String, actual_name: String },
+    NameMismatch {
+        version: i64,
+        expected_name: String,
+        actual_name: String,
+    },
 
     /// A migration file that was previously applied to the database is now missing from the directory.
     #[error(
@@ -93,6 +97,10 @@ pub enum SqlReadErrorBindings {
 /// Unified Error type for transactions and batch operations, covering all possible failure modes.
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    /// Expected a row from the database, but 0 rows were returned.
+    #[error("No row was returned by the query")]
+    RowNotFound,
+
     /// A failure occurred when opening or initializing the database connection.
     #[error(transparent)]
     Connection(#[from] connection::SqliteOpenErrors),
