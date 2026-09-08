@@ -5,6 +5,7 @@ members = [
     "sqlitex_core",
     "sqlitex_macros",
     "sqlitex_type_inference",
+    "sqlitex_cli",
 ]
 
 [workspace.package]
