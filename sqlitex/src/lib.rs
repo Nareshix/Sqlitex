@@ -1,6 +1,6 @@
 #![doc = include_str!("../docs_io_readme.md")]
 
-pub use serde;
+
 pub use sqlitex_core::Connection;
 pub use sqlitex_core::errors::{Error, Result};
 pub use sqlitex_macros::{migrate, query, query_as};
