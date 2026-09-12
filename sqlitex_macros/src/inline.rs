@@ -142,23 +142,70 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
     // 1. WRITE QUERY (INSERT, UPDATE, DELETE, CREATE)
     if select_types.is_empty() {
         return Ok(quote! {
-                    {
-                        #watcher_tokens
-                            sqlitex::__private::WriteQuery {
-                            sql: #transpiled_sql_lit,
-                            binder: #binder,
-                        }
-                    }
-                });
+            {
+                #watcher_tokens
+                sqlitex::__private::WriteQuery {
+                    sql: #transpiled_sql_lit,
+                    binder: #binder,
+                }
+            }
+        });
     }
 
     // 2. READ QUERY (SELECT)
     let cardinality = detect_query_cardinality(&sql_query, &all_tables);
 
     let (_output_type, mapper_struct) = if let Some(target) = input.target_type {
-        let is_single = select_types.len() == 1;
+        let mapper_impl = if let Type::Tuple(tuple_type) = &target {
+            if tuple_type.elems.len() != select_types.len() {
+                return Err(syn::Error::new_spanned(
+                    &target,
+                    format!(
+                        "Tuple element count mismatch: target tuple has {} element(s), but query returns {} column(s).",
+                        tuple_type.elems.len(),
+                        select_types.len()
+                    ),
+                ));
+            }
 
-        let mapper_impl = if is_single {
+            let mut tuple_reads = Vec::new();
+            for (i, col) in select_types.iter().enumerate() {
+                let idx = i as i32;
+                let base_ty = match col.data_type.base_type {
+                    BaseType::Integer => quote! { i64 },
+                    BaseType::Real => quote! { f64 },
+                    BaseType::Text => quote! { String },
+                    BaseType::Blob => quote! { Vec<u8> },
+                    BaseType::Bool => quote! { bool },
+                    _ => quote! { i64 },
+                };
+                let col_ty = if col.data_type.nullable {
+                    quote! { Option<#base_ty> }
+                } else {
+                    quote! { #base_ty }
+                };
+
+                tuple_reads.push(quote! {
+                    <#col_ty as sqlitex::__private::from_sql::FromSql>::from_sql(stmt, #idx)
+                });
+            }
+
+            let tuple_constructor = if tuple_reads.len() == 1 {
+                quote! { ( #(#tuple_reads),* , ) }
+            } else {
+                quote! { ( #(#tuple_reads),* ) }
+            };
+
+            quote! {
+                pub struct __Mapper;
+                impl sqlitex::__private::row_mapper::RowMapper for __Mapper {
+                    type Output = #target;
+                    unsafe fn map_row(&self, stmt: *mut sqlitex::__private::libsqlite3_sys::sqlite3_stmt) -> Self::Output {
+                        #tuple_constructor
+                    }
+                }
+            }
+        } else if select_types.len() == 1 {
             let col = &select_types[0];
             let base_ty = match col.data_type.base_type {
                 BaseType::Integer => quote! { i64 },
@@ -203,7 +250,7 @@ pub fn expand_query(input: QueryInput) -> syn::Result<TokenStream> {
                 };
 
                 field_reads.push(quote! {
-                #ident: <#col_ty as sqlitex::__private::from_sql::FromSql>::from_sql(stmt, #idx)
+                    #ident: <#col_ty as sqlitex::__private::from_sql::FromSql>::from_sql(stmt, #idx)
                 });
             }
 
