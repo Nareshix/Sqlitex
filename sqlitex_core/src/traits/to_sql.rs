@@ -33,6 +33,12 @@ impl ToSql for &str {
     }
 }
 
+// impl ToSql for &String {
+//     unsafe fn bind_to(self, stmt: *mut sqlite3_stmt, index: i32) -> i32 {
+//         unsafe { self.as_str().bind_to(stmt, index) }
+//     }
+// }
+
 impl ToSql for i32 {
     unsafe fn bind_to(self, stmt: *mut sqlite3_stmt, index: i32) -> i32 {
         unsafe { ffi::sqlite3_bind_int(stmt, index, self) }
