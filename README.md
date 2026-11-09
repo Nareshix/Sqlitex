@@ -1,3 +1,7 @@
+> [!WARNING]
+> The main branch contains unreleased changes that adopt an sqlx-like syntax. The documentation below applies to the latest stable release.
+
+
 # Sqlitex
 
 Sqlitex is a sqlite library for rust which aims to be simple and powerful. It offers
